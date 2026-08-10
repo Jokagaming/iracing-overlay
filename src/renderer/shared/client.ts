@@ -3,11 +3,29 @@
  *
  * Haelt den letzten bekannten Zustand vor und ruft die Render-Funktion
  * nicht bei jeder Nachricht auf, sondern einmal pro Bildwiederholung -
- * bei 60 Hz Telemetrie und einem schnelleren Monitor waere alles andere
- * verschwendete Arbeit.
+ * bei hochfrequenter Telemetrie und einem schnelleren Monitor waere alles
+ * andere verschwendete Arbeit.
+ *
+ * Zwei Transportwege:
+ * - IPC (`window.overlayAPI.onTelemetryMessage`), wenn das Overlay in
+ *   dieser App laeuft. Der Main-Process schickt hier direkt an "seine
+ *   eigenen" Fenster - kein WebSocket-Umweg, kein JSON.stringify/parse.
+ *   Gemessen brachte allein die Sende-Drosselung 60->20Hz die CPU-Last
+ *   von ~7.2% auf ~2.6% (siehe README, "Performance"); IPC statt WS fuer
+ *   die neun eigenen Fenster ist der naechste, groessere Hebel, der dort
+ *   als offener Punkt vermerkt war - hier umgesetzt.
+ * - WebSocket (Fallback), wenn `overlayAPI` fehlt - z.B. eine kuenftige
+ *   OBS-Browser-Source oder das Oeffnen der HTML-Datei in einem
+ *   gewoehnlichen Browser zeigen zeigen dieselben Widgets gegen die vom
+ *   CLI (`src/data/cli.ts`) bereitgestellte Bridge.
  */
 
 import type { BridgeMessage, SessionState, TelemetryFrame } from '../../data/types.js';
+
+// Window.overlayAPI ist zentral in shared/editMode.ts deklariert (jedes
+// Overlay importiert von dort wireEditMode() ohnehin) - hier keine zweite,
+// abweichende Deklaration, sonst kollidieren die beiden `declare global`-
+// Bloecke beim Typchecken.
 
 const RETRY_MIN_MS = 500;
 const RETRY_MAX_MS = 5000;
@@ -17,7 +35,7 @@ export class TelemetryClient {
   telemetry: TelemetryFrame | null = null;
   /** Ob die Bridge selbst iRacing sieht - nicht, ob der Renderer die Bridge sieht. */
   simConnected = false;
-  /** Ob der Renderer mit der Bridge verbunden ist. */
+  /** Ob der Renderer mit der Bridge verbunden ist (bei IPC praktisch immer true). */
   bridgeConnected = false;
 
   private socket: WebSocket | null = null;
@@ -25,7 +43,7 @@ export class TelemetryClient {
   private renderers: Array<(client: TelemetryClient) => void> = [];
   private frameRequested = false;
 
-  constructor(private readonly url: string) {}
+  constructor(private readonly wsUrl: string) {}
 
   onRender(fn: (client: TelemetryClient) => void): this {
     this.renderers.push(fn);
@@ -33,12 +51,26 @@ export class TelemetryClient {
   }
 
   start(): this {
-    this.connect();
+    const ipc = window.overlayAPI?.onTelemetryMessage;
+    if (ipc) {
+      this.startIpc(ipc);
+    } else {
+      this.connectWs();
+    }
     return this;
   }
 
-  private connect(): void {
-    this.socket = new WebSocket(this.url);
+  private startIpc(subscribe: (callback: (message: BridgeMessage) => void) => void): void {
+    // Kein Verbindungsaufbau noetig - der Kanal existiert, sobald das
+    // Fenster existiert. "bridgeConnected" bleibt trotzdem im Modell, damit
+    // render() in jedem Overlay unveraendert bleibt (dieselbe Flag-Logik
+    // wie im WS-Fall).
+    this.bridgeConnected = true;
+    subscribe((message) => this.handleMessage(message));
+  }
+
+  private connectWs(): void {
+    this.socket = new WebSocket(this.wsUrl);
 
     this.socket.addEventListener('open', () => {
       this.bridgeConnected = true;
@@ -64,7 +96,7 @@ export class TelemetryClient {
   }
 
   private scheduleReconnect(): void {
-    setTimeout(() => this.connect(), this.retryDelay);
+    setTimeout(() => this.connectWs(), this.retryDelay);
     this.retryDelay = Math.min(this.retryDelay * 2, RETRY_MAX_MS);
   }
 

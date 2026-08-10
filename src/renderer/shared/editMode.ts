@@ -9,11 +9,20 @@
  * nicht selbst setzen).
  */
 
+import type { BridgeMessage } from '../../data/types.js';
+
+// Zentrale Stelle fuer die Form von window.overlayAPI - jedes Overlay
+// importiert wireEditMode() von hier, weitere Nutzer (z.B. shared/client.ts
+// fuer onTelemetryMessage) importieren nichts Eigenes, sondern verlassen
+// sich auf dieses eine `declare global`. Zwei widerspruechliche
+// Deklarationen fuer dieselbe globale Eigenschaft wuerden beim Typchecken
+// kollidieren.
 declare global {
   interface Window {
     overlayAPI: {
       onEditModeChange: (callback: (editMode: boolean) => void) => void;
       resizeBy: (dx: number, dy: number) => void;
+      onTelemetryMessage?: (callback: (message: BridgeMessage) => void) => void;
     };
   }
 }

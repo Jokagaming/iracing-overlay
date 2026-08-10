@@ -13,6 +13,7 @@
 import { BrowserWindow, ipcMain, screen } from 'electron';
 import { join } from 'node:path';
 import { loadWindowLayout, saveWindowLayout, type WindowLayout } from './layoutStore.js';
+import type { BridgeMessage } from '../data/types.js';
 
 const SAVE_DEBOUNCE_MS = 500;
 const MIN_WIDTH = 160;
@@ -47,7 +48,10 @@ function resolveInitialBounds(config: OverlayWindowConfig, saved: WindowLayout |
   return { x: saved.x, y: saved.y, width: saved.width, height: saved.height };
 }
 
-export async function createOverlayWindow(config: OverlayWindowConfig): Promise<BrowserWindow> {
+export async function createOverlayWindow(
+  config: OverlayWindowConfig,
+  getWelcomeMessages?: () => BridgeMessage[],
+): Promise<BrowserWindow> {
   const saved = await loadWindowLayout(config.id);
   const bounds = resolveInitialBounds(config, saved);
 
@@ -77,6 +81,15 @@ export async function createOverlayWindow(config: OverlayWindowConfig): Promise<
   } else {
     win.loadFile(join(__dirname, `../renderer/${config.id}/index.html`));
   }
+
+  // Ohne das wuerde ein Fenster, dessen Renderer-JS erst nach der letzten
+  // Session-Aenderung zu lauschen beginnt, nie eine session-Nachricht
+  // bekommen - die wird per IPC nur bei tatsaechlicher Aenderung
+  // verschickt, nicht periodisch (Aequivalent zum "welcome" fuer neu
+  // verbundene WS-Clients, siehe DataLayer.getWelcomeMessages()).
+  win.webContents.once('did-finish-load', () => {
+    for (const message of getWelcomeMessages?.() ?? []) win.webContents.send('bridge-message', message);
+  });
 
   wirePersistence(win, config.id);
   wireResizeHandle(win, config.id);

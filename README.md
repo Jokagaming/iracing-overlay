@@ -195,9 +195,10 @@ bei gleichem absoluten Verbrauch entsprechend hoeher):
 |---|---|---|
 | Startzeit (Klick bis alle Fenster erzeugt) | ~0.3 s | < 3 s ✅ |
 | CPU im Leerlauf (wartet auf iRacing) | ~0.03 % | < 2 % ✅ |
-| CPU im Demo-Modus, urspruenglich (9 Fenster, Telemetrie bei 60 Hz) | ~7.2 % | < 2 % ❌ |
-| CPU im Demo-Modus, Telemetrie auf 30 Hz gedrosselt | ~3.7 % | < 2 % ❌ |
-| CPU im Demo-Modus, Telemetrie auf 20 Hz gedrosselt (**jetziger Standard**) | ~2.6 % | < 2 % ⚠️ knapp verfehlt |
+| CPU im Demo-Modus, urspruenglich (9 Fenster, Telemetrie bei 60 Hz, WS) | ~7.2 % | < 2 % ❌ |
+| CPU im Demo-Modus, Telemetrie auf 30 Hz gedrosselt (WS) | ~3.7 % | < 2 % ❌ |
+| CPU im Demo-Modus, Telemetrie auf 20 Hz gedrosselt (WS) | ~2.6 % | < 2 % ⚠️ knapp verfehlt |
+| CPU im Demo-Modus, 20 Hz + IPC statt WS fuer die eigenen Fenster (**jetziger Stand**) | ~2.2-2.4 % (2 Messlaeufe) | < 2 % ⚠️ knapp verfehlt |
 
 **Ursache:** neun unabhaengige Electron-BrowserWindows bedeuten neun
 unabhaengige Chromium-Renderer-Prozesse, jeder mit eigenem WebSocket,
@@ -218,15 +219,39 @@ Renderer-Fenster hin, der sich per Senderate nicht wegdrosseln laesst).
 Visuell bei 20 Hz kein wahrnehmbarer Unterschied zu 60 Hz, auch nicht beim
 Inputs-Graph.
 
-**Bewusst nicht gemacht:** unter 20 Hz weiter drosseln, um die letzten
-0.6 Prozentpunkte zu druecken - das Verhaeltnis Nutzen/Risiko fuer
-Bildwiederholrate kippt dort. Der naheliegende naechste Schritt waere
-stattdessen, den WebSocket-Umweg fuer die neun *eigenen* Overlay-Fenster
-ganz zu umgehen und stattdessen `webContents.send()`/IPC zu nutzen (kein
-JSON.stringify/parse-Rundweg mehr) - das ist aber eine echte
-Architekturaenderung (WS bliebe dann nur fuer externe Verbraucher wie eine
-kuenftige OBS-Browser-Source relevant) und wurde hier nicht angefasst, um
-nicht ungetestet neue Bugs einzufuehren.
+**Zweiter Schritt: IPC statt WebSocket fuer die eigenen Fenster.** Die neun
+eigenen Overlay-Fenster laufen jetzt ueber `webContents.send()` /
+`ipcRenderer.on()` statt ueber den WebSocket-Server (kein
+JSON.stringify/parse-Rundweg mehr fuer diese neun Fenster). Der WS-Server
+laeuft weiter unveraendert fuer externe Verbraucher (z.B. eine kuenftige
+OBS-Browser-Source) und fuer das eigenstaendige CLI, das keine IPC-Option
+hat. `renderer/shared/client.ts` erkennt automatisch, welcher Transport
+verfuegbar ist - dieselben Widget-Dateien funktionieren dadurch
+unveraendert in beiden Faellen. Ein IPC-Aequivalent zum WS-"welcome"
+(neu verbundener Client bekommt sofort den letzten Session-Stand) war
+noetig und ist ergaenzt (`DataLayer.getWelcomeMessages()`, ausgeloest
+ueber `did-finish-load` pro Fenster).
+
+Effekt: ~2.6 % -> ~2.2-2.4 %, also ein spuerbarer, aber kleinerer Sprung
+als die Sende-Drosselung selbst. Das <2%-Ziel bleibt damit knapp verfehlt.
+Weiteres Drosseln unter 20 Hz haette das vermutlich geschafft, wurde aber
+bewusst nicht gemacht - das Verhaeltnis Nutzen/Risiko fuer Bildwiederholrate
+kippt dort.
+
+**Nicht abgeschlossen verifiziert:** Die interaktive Pruefung von
+Edit-Modus/Tray nach diesem Umbau (Hotkey, Fenster verschieben) konnte in
+dieser Session nicht zuverlaessig durchgefuehrt werden - die
+Eingabe-Simulation (Maus/Tastatur) versagte durchgaengig, auch bei einem
+voellig app-unabhaengigen Test (Klick auf die Windows-Uhr oeffnete kein
+Kalender-Flyout), was auf ein Umgebungsproblem der Test-Session hindeutet,
+nicht auf einen Code-Fehler. Ueber eine dateibasierte Debug-Ausgabe (nicht
+stdout-gepuffert) liess sich immerhin zeigen, dass die
+Hotkey-Registrierung selbst erfolgreich ist (`globalShortcut.isRegistered`
+= `true`); ob der Hotkey/Tray-Klick am Ende tatsaechlich `toggleEditMode()`
+ausloest, ist offen. An der Edit-Modus-/Resize-Logik selbst wurde in
+diesem Umbau nichts geaendert, nur ein neuer `did-finish-load`-Hook
+ergaenzt - das Risiko einer echten Regression ist klein, aber unbewiesen.
+Sollte beim naechsten Mal zuerst erneut gegengeprueft werden.
 
 ## Bekannte offene Punkte
 
@@ -243,6 +268,9 @@ nicht ungetestet neue Bugs einzufuehren.
   Profile) ist noch nicht gebaut - dafuer fehlt jede UI, mit der man
   ueberhaupt mehrere Layouts anlegen und benennen koennte. Aktuell gibt es
   genau ein Profil ("default"), das alle Overlay-Positionen haelt.
+- Edit-Modus/Tray nach dem IPC-Umbau nicht interaktiv nachgeprueft (siehe
+  "Performance" oben) - Eingabe-Simulation versagte in dieser Session
+  systemweit, nicht nur fuer diese App.
 
 Geklaert: `irsdk-node`s native Bindings laden ohne Probleme in Electrons
 Node-ABI (getestet via `ELECTRON_RUN_AS_NODE=1`) - das Paket wird explizit

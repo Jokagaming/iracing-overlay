@@ -6,6 +6,13 @@
  * unveraendert genauso wie im eigenstaendigen CLI (`src/data/cli.ts`).
  * Dieses Modul uebernimmt nur den Lifecycle; die Tick-/Broadcast-Schleife
  * kommt aus data/broadcaster.ts, gemeinsam mit dem CLI genutzt.
+ *
+ * `onMessage` reicht jede Nachricht zusaetzlich zum WS-Broadcast an den
+ * Aufrufer durch - main/index.ts nutzt das, um sie per `webContents.send()`
+ * direkt an die eigenen Overlay-Fenster zu schicken (kein WS-Umweg fuer
+ * die eigenen neun Fenster, siehe README "Performance"). Der WS-Server
+ * laeuft trotzdem weiter, fuer externe Verbraucher wie eine kuenftige
+ * OBS-Browser-Source.
  */
 
 import type { BridgeMessage } from '../data/types.js';
@@ -21,6 +28,7 @@ export interface DataLayerOptions {
   port: number;
   demo: boolean;
   telemetryHz?: number;
+  onMessage?: (message: BridgeMessage) => void;
 }
 
 export class DataLayer {
@@ -33,11 +41,14 @@ export class DataLayer {
     this.server = new BridgeServer({
       host: options.host,
       port: options.port,
-      welcome: () => this.welcomeMessages(),
+      welcome: () => this.getWelcomeMessages(),
     });
     this.broadcaster = new TelemetryBroadcaster({
       source: this.source,
-      broadcast: (message) => this.server?.broadcast(message),
+      broadcast: (message) => {
+        this.server?.broadcast(message);
+        options.onMessage?.(message);
+      },
       telemetryHz: options.telemetryHz ?? DEFAULT_TELEMETRY_HZ,
     });
     this.broadcaster.start();
@@ -49,6 +60,22 @@ export class DataLayer {
     await this.server?.close();
   }
 
+  /**
+   * Letzter bekannter connection-/session-Stand - fuer neu verbundene
+   * WS-Clients (siehe `welcome` oben) und fuer per IPC angebundene
+   * Overlay-Fenster, sobald ihre Seite geladen ist (siehe
+   * overlayWindow.ts, `did-finish-load`). Ohne das wuerde ein Fenster, das
+   * erst nach der letzten Session-Aenderung zu lauschen beginnt, nie eine
+   * session-Nachricht bekommen - die wird nur bei tatsaechlicher Aenderung
+   * neu verschickt, nicht periodisch.
+   */
+  getWelcomeMessages(): BridgeMessage[] {
+    const session = this.source?.lastSessionMessage ?? null;
+    const messages: BridgeMessage[] = [{ type: 'connection', connected: session != null }];
+    if (session) messages.push(session);
+    return messages;
+  }
+
   private async buildSource(demo: boolean): Promise<DataSource> {
     if (demo) {
       const { MockSource } = await import('../data/mock/mockSource.js');
@@ -56,12 +83,5 @@ export class DataLayer {
     }
     const { IRacingConnector } = await import('../data/connector.js');
     return new IRacingConnector();
-  }
-
-  private welcomeMessages(): BridgeMessage[] {
-    const session = this.source?.lastSessionMessage ?? null;
-    const messages: BridgeMessage[] = [{ type: 'connection', connected: session != null }];
-    if (session) messages.push(session);
-    return messages;
   }
 }

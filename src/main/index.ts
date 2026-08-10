@@ -41,8 +41,12 @@ function toggleEditMode(): void {
   console.log(`[main] edit mode -> ${editMode}`);
 }
 
+const DEFAULT_TELEMETRY_HZ = 20;
+
 app.whenReady().then(async () => {
-  overlayWindows = await Promise.all(OVERLAY_WINDOWS.map((config) => createOverlayWindow(config)));
+  overlayWindows = await Promise.all(
+    OVERLAY_WINDOWS.map((config) => createOverlayWindow(config, () => dataLayer.getWelcomeMessages())),
+  );
 
   const registered = globalShortcut.register(EDIT_MODE_HOTKEY, toggleEditMode);
   if (!registered) {
@@ -55,9 +59,22 @@ app.whenReady().then(async () => {
   // `npm run dev -- --demo` im electron-vite-Entwicklungsmodus.
   const demo = process.argv.includes('--demo');
   const telemetryHz = parseRateArg(process.argv);
-  await dataLayer.start({ host: DATA_HOST, port: DATA_PORT, demo, telemetryHz });
+  await dataLayer.start({
+    host: DATA_HOST,
+    port: DATA_PORT,
+    demo,
+    telemetryHz,
+    // Direkt an die eigenen Fenster statt nur ueber WS - siehe
+    // dataLayer.ts und README ("Performance"). Der WS-Server laeuft
+    // trotzdem weiter, fuer externe Verbraucher.
+    onMessage: (message) => {
+      for (const win of overlayWindows) {
+        if (!win.isDestroyed()) win.webContents.send('bridge-message', message);
+      }
+    },
+  });
   console.log(
-    `[main] Datenlayer auf ws://${DATA_HOST}:${DATA_PORT}${demo ? ' (Demo-Modus)' : ''}, Telemetrie ${telemetryHz ?? 30}Hz`,
+    `[main] Datenlayer auf ws://${DATA_HOST}:${DATA_PORT}${demo ? ' (Demo-Modus)' : ''}, Telemetrie ${telemetryHz ?? DEFAULT_TELEMETRY_HZ}Hz`,
   );
 });
 
