@@ -35,6 +35,10 @@ html,
 body {
   margin: 0;
   padding: 0;
+  /* Damit .widget mit height:100% wirklich bis zur Fensterkante reicht -
+     sonst haette der Resize-Griff nur die Inhaltsgroesse als Ziel und
+     saesse nicht dort, wo die tatsaechliche Fensterecke ist. */
+  height: 100%;
   background: transparent;
   overflow: hidden;
   font-family: var(--font);
@@ -48,19 +52,54 @@ body {
 }
 
 .widget {
+  position: relative;
+  box-sizing: border-box;
   margin: 6px;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
-  width: fit-content;
+  /*
+   * Volle Fenstergroesse statt fit-content: Drag-Region und Resize-Griff
+   * muessen an der tatsaechlichen Fensterkante sitzen, nicht nur am Rand
+   * des Tabelleninhalts - sonst waere ein groesser gezogenes Fenster in
+   * seinem leeren Bereich weder verschieb- noch greifbar.
+   */
+  width: calc(100% - 12px);
+  height: calc(100% - 12px);
 }
 
-/* Gelber Rahmen im Edit-Modus - von aussen auf den ersten Blick erkennbar,
-   ob das Fenster gerade klickbar ist (siehe Meilenstein 0). */
+/*
+ * Gelber Rahmen im Edit-Modus - von aussen auf den ersten Blick erkennbar,
+ * ob das Fenster gerade klickbar ist (siehe Meilenstein 0).
+ *
+ * -webkit-app-region: drag macht das ganze Overlay per OS-Fensterverwaltung
+ * verschiebbar, ohne eigenen Mousemove-Code im Renderer - das ist der
+ * offizielle Weg fuer rahmenlose Electron-Fenster. Nur im Edit-Modus aktiv,
+ * sonst liesse sich das Overlay staendig aus Versehen verschieben.
+ */
 .widget[data-edit="true"] {
   border-color: var(--edit-border);
+  -webkit-app-region: drag;
+}
+
+.widget__resize-grip {
+  display: none;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+  /* Muss NICHT mitziehen, wenn der Rest des Fensters per Drag-Region
+     verschoben wird - sonst liesse sich der Griff nie einzeln fassen. */
+  -webkit-app-region: no-drag;
+  background: linear-gradient(135deg, transparent 50%, var(--edit-border) 50%);
+}
+
+.widget[data-edit="true"] .widget__resize-grip {
+  display: block;
 }
 
 .widget__header {

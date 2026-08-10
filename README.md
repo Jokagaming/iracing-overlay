@@ -32,10 +32,15 @@ npm run dev
 ```
 
 Startet Electron im Dev-Modus mit Hot-Reload, verbindet sich mit einer
-laufenden iRacing-Instanz und zeigt das Relative-Overlay oben links:
-transparent, always-on-top, standardmaessig klickdurchlaessig. `Strg+Alt+E`
-schaltet einen Edit-Modus um (gelber Rahmen, Klicks werden dann vom Fenster
-selbst verarbeitet statt durchgereicht).
+laufenden iRacing-Instanz und zeigt das Relative-Overlay: transparent,
+always-on-top, standardmaessig klickdurchlaessig. `Strg+Alt+E` schaltet
+einen Edit-Modus um (gelber Rahmen). Im Edit-Modus laesst sich das Fenster
+per Ziehen am Fenster verschieben (auch auf einen anderen Monitor - das
+*ist* die Monitor-Auswahl, es gibt dafuer kein eigenes Dropdown) und per
+Eck-Griff unten rechts in der Groesse aendern. Beides wird automatisch
+gespeichert (`%APPDATA%/iracing-overlay/layouts/default.json`) und beim
+naechsten Start wiederhergestellt - haengt der gespeicherte Monitor nicht
+mehr dran, faellt die Position auf den Standardwert zurueck.
 
 Ohne laufendes iRacing testen:
 
@@ -54,7 +59,7 @@ Aufrufer ist ein anderer, siehe `src/main/dataLayer.ts`.
 | 0 | Electron-Grundgerued, transparentes Always-on-Top-Testfenster, Hotkey togglet Klickdurchlaessigkeit | **fertig, verifiziert** (Klick bei AN geht durch, bei Edit-Modus kommt er an) |
 | 1 | Datenlayer eigenstaendig: SDK-Connector, Mock-Provider, Normalizer, WebSocket-Server | **fertig, verifiziert per Demo-Modus** (Live-Anbindung noch nicht gegen echtes iRacing getestet, siehe unten) |
 | 2 | Erstes echtes Overlay (Relative) in Electron eingebunden | **fertig, verifiziert** (Datenlayer laeuft im Main-Process, Relative-Fenster zeigt korrekt sortierte Zeilen, Edit-Modus-Hotkey funktioniert am echten Overlay) |
-| 3 | Edit-Modus + Layout-Persistenz, Auto-Switch nach Auto/Serie/Session-Typ, **Monitor-Auswahl pro Overlay** | offen |
+| 3 | Edit-Modus wird nutzbar (Verschieben, Groesse aendern), Layout-Persistenz, Monitor-Auswahl | **teilweise fertig, verifiziert** - Auto-Switch nach Auto/Serie/Session-Typ fehlt noch, siehe unten |
 | 4 | Standings + Fuel-Rechner, SQLite-Rundenzeiten | offen |
 | 5 | Input-Telemetrie-Graph + Radar | offen |
 | 6 | Track Map, Delta-Bar/Timer/Weather/Flags | offen |
@@ -66,7 +71,8 @@ Aufrufer ist ein anderer, siehe `src/main/dataLayer.ts`.
 src/
   main/        Electron Main-Process
                  index.ts          App-Lifecycle, Hotkey, Fenster erzeugen
-                 overlayWindow.ts  transparentes/klickdurchlaessiges Fenster (Meilenstein 0)
+                 overlayWindow.ts  Fenster erzeugen, Drag/Resize, Persistenz verdrahten
+                 layoutStore.ts    Fenstergeometrie als JSON im Nutzerprofil
                  dataLayer.ts      startet den Datenlayer im Main-Process
   preload/     contextBridge-APIs fuer die Renderer
   renderer/    ein Ordner pro Overlay/Fenster, je ein Vite-Eintrag
@@ -100,12 +106,19 @@ Testet die reinen Berechnungsfunktionen (`src/data/calc/`).
 
 ## Bekannte offene Punkte
 
-- Als "UNSICHER" markierte SDK-Feldnamen/Semantik (`src/data/types.ts`)
-  sind erst gegen echte iRacing-Daten verifiziert, sobald eine Session
-  laeuft - bisher nur gegen den Demo-Modus getestet.
+- **Noch nie gegen echtes iRacing getestet.** Der Sim-Prozess lief bei
+  keinem bisherigen Arbeitsschritt (nur Launcher/Client, kein
+  `iRacingSim64DX11.exe`) - `IsSimRunning()` liefert bislang immer `false`.
+  Als "UNSICHER" markierte SDK-Feldnamen/Semantik (`src/data/types.ts`)
+  sowie die komplette Live-Verbindung sind entsprechend nur gegen den
+  Demo-Modus verifiziert, nicht gegen echte Daten.
 - `irsdk-node`s Umgang mit fehlerhaft formatierter Session-YAML (Sonderzeichen
   in Fahrernamen, Team-Events) ist ungeprueft; IRSDKSharper (C#) patcht dafuer
   bekannte Faelle, ob `irsdk-node` das auch tut, ist offen.
+- Auto-Switch der Layouts nach Auto/Serie/Session-Typ (mehrere benannte
+  Profile) ist noch nicht gebaut - dafuer fehlt jede UI, mit der man
+  ueberhaupt mehrere Layouts anlegen und benennen koennte. Aktuell gibt es
+  genau ein Profil ("default"), das alle Overlay-Positionen haelt.
 
 Geklaert: `irsdk-node`s native Bindings laden ohne Probleme in Electrons
 Node-ABI (getestet via `ELECTRON_RUN_AS_NODE=1`) - das Paket wird explizit
