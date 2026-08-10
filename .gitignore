@@ -1,0 +1,27 @@
+node_modules/
+out/
+dist/
+dist-electron/
+*.log
+*.tsbuildinfo
+
+# SQLite-Datenbanken enthalten Rundenzeiten aus eigenen Sessions
+*.sqlite
+*.sqlite-journal
+
+# Aufgezeichnete Sessions koennen sehr gross werden
+recordings/*.jsonl
+recordings/*.jsonl.gz
+!recordings/.gitkeep
+
+# Nutzerspezifische Layouts
+layouts/*.json
+!layouts/default.json
+
+.env
+.env.*
+
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini

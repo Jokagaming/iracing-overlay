@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>Overlay-Testfenster</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        overflow: hidden;
+        font-family: "Segoe UI", sans-serif;
+      }
+      .box {
+        margin: 8px;
+        padding: 12px 16px;
+        border-radius: 8px;
+        background: rgba(12, 14, 18, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: #f2f4f8;
+        width: 380px;
+        box-sizing: border-box;
+      }
+      /* Gelber Rahmen im Edit-Modus - im Screenshot auf den ersten Blick
+         von aussen erkennbar, ob das Fenster gerade klickbar ist. */
+      .box[data-edit="true"] {
+        border-color: #ffd640;
+      }
+      h1 {
+        font-size: 13px;
+        margin: 0 0 8px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: rgba(242, 244, 248, 0.6);
+      }
+      p {
+        margin: 4px 0;
+        font-size: 13px;
+      }
+      button {
+        margin-top: 8px;
+        padding: 6px 12px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="box" id="box">
+      <h1>iRacing Overlay – Testfenster</h1>
+      <p id="status">Klickdurchlaessig: AN</p>
+      <p id="counter">Testklicks: 0</p>
+      <button id="btn">Test-Klick</button>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
