@@ -50,6 +50,14 @@ export interface Driver {
 
   lastLapSec: number | null;
   bestLapSec: number | null;
+  /**
+   * `CarIdxF2Time` - laut SDK-Doku "race time behind leader or fastest lap
+   * time otherwise". UNSICHER: was genau "otherwise" bedeutet (ausserhalb
+   * eines laufenden Rennens, z.B. Qualifying) ist nicht verifiziert -
+   * fuer Standings nur im Rennen verwenden, bis das an echten Daten
+   * geprueft ist.
+   */
+  gapToLeaderSec: number | null;
 }
 
 export interface TrackInfo {
@@ -104,6 +112,10 @@ export interface FuelState {
   levelLiters: number;
   levelPct: number;
   usePerHourLiters: number;
+  /** Verbrauch der letzten abgeschlossenen Runden im Schnitt (bis zu 10). `null` bis genug Runden vorliegen. */
+  usePerLapLiters: number | null;
+  /** Restrunden bei aktuellem Tempo und Tankstand. `null` ohne Verbrauchsdaten. */
+  lapsRemainingOnFuel: number | null;
 }
 
 export interface DeltaState {
@@ -152,6 +164,10 @@ export type SdkSessionState =
 export interface TelemetryFrame {
   seq: number;
   sessionTimeSec: number;
+  /** `SessionTimeRemain`. `null` bei rundenbasierten Sessions ohne Zeitlimit. */
+  sessionTimeRemainSec: number | null;
+  /** `SessionLapsRemainEx` - loest die aeltere, jetzt veraltete `SessionLapsRemain` ab. `null` bei zeitbasierten Sessions. */
+  sessionLapsRemain: number | null;
   sessionState: SdkSessionState;
   flags: string[];
   drivers: Driver[]; // vollstaendig, inkl. Live-Felder

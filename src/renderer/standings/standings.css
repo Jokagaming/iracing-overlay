@@ -1,0 +1,93 @@
+@import "../shared/overlay.css";
+
+.standings {
+  min-width: 340px;
+}
+
+.standings__table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.standings__table td {
+  height: var(--row-height);
+  padding: 0 6px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* Klassen-Trennzeile - eigene Zeile statt nur Abstand, damit bei vielen
+   Klassen sofort klar ist, wo die naechste anfaengt. */
+.standings__class-header td {
+  height: 18px;
+  padding-top: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--class-color, var(--text-dim));
+}
+
+.standings__row:nth-child(even) {
+  background: var(--bg-row);
+}
+
+.standings__row--player {
+  background: var(--bg-player);
+}
+
+.standings__row--player .standings__name {
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+.standings__row--pit {
+  opacity: 0.5;
+}
+
+.standings__position {
+  width: 26px;
+  text-align: right;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.standings__number {
+  width: 30px;
+  text-align: right;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.standings__name {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.standings__last,
+.standings__best {
+  width: 62px;
+  text-align: right;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.standings__gap {
+  width: 52px;
+  text-align: right;
+  font-weight: 600;
+  color: var(--behind);
+}
+
+.standings__gap--leader {
+  color: var(--player);
+}
+
+.standings__pit {
+  color: var(--pit);
+  font-size: 10px;
+  font-weight: 700;
+}

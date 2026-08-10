@@ -17,7 +17,9 @@ Assets-/Code-/Design-Klon).
   eingebunden, inkl. Test der Kompatibilitaet mit Electrons Node-ABI.
 - Build: `electron-vite` (Vite fuer Main-, Preload- und mehrere
   Renderer-Bundles).
-- Geplant: `better-sqlite3` fuer das Rundenzeiten-Log (Meilenstein 4).
+- `better-sqlite3` fuer ein Rundenzeiten-Log ist bewusst noch nicht eingebaut
+  - Standings und Fuel-Rechner brauchen es nicht (Bestzeit/Verbrauch kommen
+  live aus der Telemetrie), es haette also noch keinen Verbraucher gehabt.
 
 Nur Borderless Windowed wird unterstuetzt — siehe
 [docs/fullscreen-exclusive.md](docs/fullscreen-exclusive.md) fuer den Grund
@@ -32,12 +34,13 @@ npm run dev
 ```
 
 Startet Electron im Dev-Modus mit Hot-Reload, verbindet sich mit einer
-laufenden iRacing-Instanz und zeigt das Relative-Overlay: transparent,
-always-on-top, standardmaessig klickdurchlaessig. `Strg+Alt+E` schaltet
-einen Edit-Modus um (gelber Rahmen). Im Edit-Modus laesst sich das Fenster
-per Ziehen am Fenster verschieben (auch auf einen anderen Monitor - das
-*ist* die Monitor-Auswahl, es gibt dafuer kein eigenes Dropdown) und per
-Eck-Griff unten rechts in der Groesse aendern. Beides wird automatisch
+laufenden iRacing-Instanz und zeigt drei Overlays (Relative, Standings,
+Fuel): transparent, always-on-top, standardmaessig klickdurchlaessig.
+`Strg+Alt+E` schaltet
+einen Edit-Modus um (gelber Rahmen). Im Edit-Modus laesst sich jedes
+Fenster einzeln per Ziehen verschieben (auch auf einen anderen Monitor -
+das *ist* die Monitor-Auswahl, es gibt dafuer kein eigenes Dropdown) und
+per Eck-Griff unten rechts in der Groesse aendern. Beides wird automatisch
 gespeichert (`%APPDATA%/iracing-overlay/layouts/default.json`) und beim
 naechsten Start wiederhergestellt - haengt der gespeicherte Monitor nicht
 mehr dran, faellt die Position auf den Standardwert zurueck.
@@ -60,7 +63,7 @@ Aufrufer ist ein anderer, siehe `src/main/dataLayer.ts`.
 | 1 | Datenlayer eigenstaendig: SDK-Connector, Mock-Provider, Normalizer, WebSocket-Server | **fertig, verifiziert per Demo-Modus** (Live-Anbindung noch nicht gegen echtes iRacing getestet, siehe unten) |
 | 2 | Erstes echtes Overlay (Relative) in Electron eingebunden | **fertig, verifiziert** (Datenlayer laeuft im Main-Process, Relative-Fenster zeigt korrekt sortierte Zeilen, Edit-Modus-Hotkey funktioniert am echten Overlay) |
 | 3 | Edit-Modus wird nutzbar (Verschieben, Groesse aendern), Layout-Persistenz, Monitor-Auswahl | **teilweise fertig, verifiziert** - Auto-Switch nach Auto/Serie/Session-Typ fehlt noch, siehe unten |
-| 4 | Standings + Fuel-Rechner, SQLite-Rundenzeiten | offen |
+| 4 | Standings + Fuel-Rechner | **fertig, verifiziert per Demo-Modus** - SQLite-Rundenzeiten bewusst zurueckgestellt (kein Verbraucher dafuer), siehe unten |
 | 5 | Input-Telemetrie-Graph + Radar | offen |
 | 6 | Track Map, Delta-Bar/Timer/Weather/Flags | offen |
 | 7 | Packaging (`electron-builder`), Tray, Start-/CPU-Budget | offen |
@@ -76,10 +79,14 @@ src/
                  dataLayer.ts      startet den Datenlayer im Main-Process
   preload/     contextBridge-APIs fuer die Renderer
   renderer/    ein Ordner pro Overlay/Fenster, je ein Vite-Eintrag
-                 relative/         erstes echtes Overlay (Meilenstein 2)
+                 shared/           Overlay-uebergreifend: WS-Client, Formatierung,
+                                    Edit-Modus-Verdrahtung, Basis-CSS
+                 relative/         Autos vor/hinter dem Spieler (Meilenstein 2)
+                 standings/        Session-Wertung nach Klasse (Meilenstein 4)
+                 fuel/             Verbrauch, Restrunden, Nachtankmenge (Meilenstein 4)
   data/        Datenlayer, eigenstaendig lauffaehig ohne Electron:
                  types.ts        normalisiertes Modell
-                 calc/            reine Funktionen (Relative-Gap, ...), getestet
+                 calc/            reine Funktionen (Relative-Gap, Fuel-Planung, Standings), getestet
                  normalize/       SDK-Rohdaten -> normalisiertes Modell
                  mock/            simulierte Telemetrie ohne iRacing
                  server/          WebSocket-Broadcast
@@ -102,7 +109,8 @@ verbindet er sich mit einer laufenden iRacing-Instanz.
 npx vitest run
 ```
 
-Testet die reinen Berechnungsfunktionen (`src/data/calc/`).
+Testet die reinen Berechnungsfunktionen (`src/data/calc/`): Relative-Gap,
+Fuel-Tracking/-Planung, Standings-Gruppierung.
 
 ## Bekannte offene Punkte
 

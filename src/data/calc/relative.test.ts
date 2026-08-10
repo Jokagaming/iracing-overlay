@@ -25,6 +25,7 @@ function makeDriver(overrides: Partial<Driver> & { carIdx: number }): Driver {
     trackSurface: 'on_track',
     lastLapSec: null,
     bestLapSec: null,
+    gapToLeaderSec: null,
     ...overrides,
   };
 }
@@ -45,6 +46,8 @@ function makeFrame(cars: Array<{ idx: number; estTime: number; lap?: number; isP
   return {
     seq: 1,
     sessionTimeSec: 0,
+    sessionTimeRemainSec: null,
+    sessionLapsRemain: null,
     sessionState: 'racing',
     flags: ['green'],
     drivers,
@@ -54,7 +57,7 @@ function makeFrame(cars: Array<{ idx: number; estTime: number; lap?: number; isP
       rpm: 0,
       gear: 0,
       inputs: { throttle: 0, brake: 0, clutch: 0, steerRad: 0 },
-      fuel: { levelLiters: 0, levelPct: 0, usePerHourLiters: 0 },
+      fuel: { levelLiters: 0, levelPct: 0, usePerHourLiters: 0, usePerLapLiters: null, lapsRemainingOnFuel: null },
       delta: { toBestLapSec: null, toOptimalLapSec: null, toSessionBestLapSec: null },
       tires: {
         lf: { tempInnerC: 0, tempMiddleC: 0, tempOuterC: 0, wearPct: 0, coldPressureKpa: 0 },

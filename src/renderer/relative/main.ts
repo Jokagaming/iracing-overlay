@@ -1,18 +1,8 @@
 import type { CarClass } from '../../data/types.js';
 import { buildRelativeRows, type RelativeRow } from '../../data/calc/relative.js';
-import { TelemetryClient } from './client.js';
-import * as format from './format.js';
-
-export {};
-
-declare global {
-  interface Window {
-    overlayAPI: {
-      onEditModeChange: (callback: (editMode: boolean) => void) => void;
-      resizeBy: (dx: number, dy: number) => void;
-    };
-  }
-}
+import { TelemetryClient } from '../shared/client.js';
+import * as format from '../shared/format.js';
+import { wireEditMode } from '../shared/editMode.js';
 
 const params = new URLSearchParams(location.search);
 const AHEAD = clampCount(params.get('ahead'), 4);
@@ -159,36 +149,5 @@ function render(client: TelemetryClient): void {
   }
 }
 
-window.overlayAPI.onEditModeChange((editMode) => {
-  widgetEl.dataset.edit = String(editMode);
-});
-
-/**
- * Verschieben laeuft komplett nativ ueber -webkit-app-region: drag (siehe
- * relative.css) - kein JS noetig. Die Groesse hat das rahmenlose Fenster
- * dagegen ohne eigene Ziehkante nicht, deshalb dieser Griff: er meldet nur
- * die Mausbewegung als Delta an den Main-Process, der tatsaechlich
- * `win.setBounds()` aufruft (der Renderer kann seine eigene Fenstergroesse
- * nicht selbst setzen).
- */
-resizeGripEl.addEventListener('mousedown', (startEvent) => {
-  startEvent.preventDefault();
-  let lastX = startEvent.screenX;
-  let lastY = startEvent.screenY;
-
-  function onMove(moveEvent: MouseEvent): void {
-    window.overlayAPI.resizeBy(moveEvent.screenX - lastX, moveEvent.screenY - lastY);
-    lastX = moveEvent.screenX;
-    lastY = moveEvent.screenY;
-  }
-
-  function onUp(): void {
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onUp);
-  }
-
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onUp);
-});
-
+wireEditMode(widgetEl, resizeGripEl);
 new TelemetryClient(WS_URL).onRender(render).start();

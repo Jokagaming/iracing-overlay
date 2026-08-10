@@ -168,6 +168,12 @@ function buildPlayer(t: TelemetryVarList, playerCarIdx: number): PlayerState {
       levelLiters: scalarNum(t.FuelLevel),
       levelPct: scalarNum(t.FuelLevelPct),
       usePerHourLiters: scalarNum(t.FuelUsePerHour),
+      // Wird vom Connector nach dem Aufruf hier befuellt - der Verbrauch
+      // pro Runde braucht Zustand ueber mehrere Ticks hinweg (siehe
+      // calc/fuel.ts), das gehoert nicht in diese sonst zustandslose
+      // Mapping-Funktion.
+      usePerLapLiters: null,
+      lapsRemainingOnFuel: null,
     },
     delta: {
       toBestLapSec: scalarNum(t.LapDeltaToBestLap) || null,
@@ -197,6 +203,7 @@ function buildDrivers(t: TelemetryVarList, roster: DriverRosterEntry[], playerCa
   const trackSurface = arrNum(t.CarIdxTrackSurface);
   const lastLap = arrNum(t.CarIdxLastLapTime);
   const bestLap = arrNum(t.CarIdxBestLapTime);
+  const gapToLeader = arrNum(t.CarIdxF2Time);
 
   return roster
     .filter((entry) => !entry.isSpectator)
@@ -214,6 +221,7 @@ function buildDrivers(t: TelemetryVarList, roster: DriverRosterEntry[], playerCa
         trackSurface: decodeTrackLocation(trackSurface[i]),
         lastLapSec: lastLap[i] > 0 ? lastLap[i]! : null,
         bestLapSec: bestLap[i] > 0 ? bestLap[i]! : null,
+        gapToLeaderSec: gapToLeader[i] ?? null,
       };
     });
 }
@@ -228,6 +236,8 @@ export function buildTelemetryFrame(
   return {
     seq,
     sessionTimeSec: scalarNum(t.SessionTime),
+    sessionTimeRemainSec: scalarNum(t.SessionTimeRemain) || null,
+    sessionLapsRemain: scalarNum(t.SessionLapsRemainEx) || null,
     sessionState: decodeSessionState(scalarNum(t.SessionState)),
     flags: decodeFlags(scalarNum(t.SessionFlags)),
     drivers: buildDrivers(t, roster, playerCarIdx),

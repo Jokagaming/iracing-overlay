@@ -6,8 +6,12 @@ import { createOverlayWindow, setEditMode } from './overlayWindow.js';
 const EDIT_MODE_HOTKEY = 'Control+Alt+E';
 const DATA_HOST = '127.0.0.1';
 const DATA_PORT = 8778;
-// Startposition, falls noch kein Layout gespeichert ist (erster Start).
-const RELATIVE_WINDOW = { id: 'relative', x: 40, y: 40, width: 340, height: 260 };
+// Startpositionen, falls noch kein Layout gespeichert ist (erster Start).
+const OVERLAY_WINDOWS = [
+  { id: 'relative', x: 40, y: 40, width: 340, height: 260 },
+  { id: 'standings', x: 400, y: 40, width: 360, height: 320 },
+  { id: 'fuel', x: 40, y: 320, width: 220, height: 190 },
+];
 
 const dataLayer = new DataLayer();
 let overlayWindows: BrowserWindow[] = [];
@@ -20,7 +24,7 @@ function toggleEditMode(): void {
 }
 
 app.whenReady().then(async () => {
-  overlayWindows = [await createOverlayWindow(RELATIVE_WINDOW)];
+  overlayWindows = await Promise.all(OVERLAY_WINDOWS.map((config) => createOverlayWindow(config)));
 
   const registered = globalShortcut.register(EDIT_MODE_HOTKEY, toggleEditMode);
   if (!registered) {

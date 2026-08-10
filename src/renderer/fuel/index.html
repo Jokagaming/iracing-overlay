@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fuel</title>
+    <link rel="stylesheet" href="fuel.css" />
+  </head>
+  <body>
+    <div class="widget fuel" id="widget">
+      <div class="widget__header">
+        <span>Fuel</span>
+      </div>
+      <div class="widget__status" id="status">Verbinde mit der Bridge ...</div>
+      <div class="fuel__body is-hidden" id="body">
+        <div class="fuel__row">
+          <span class="fuel__label">Tank</span>
+          <span class="fuel__value" id="level"></span>
+        </div>
+        <div class="fuel__row">
+          <span class="fuel__label">Verbrauch/Runde</span>
+          <span class="fuel__value" id="usage"></span>
+        </div>
+        <div class="fuel__row">
+          <span class="fuel__label">Restrunden (Tank)</span>
+          <span class="fuel__value" id="laps-on-fuel"></span>
+        </div>
+        <div class="fuel__row">
+          <span class="fuel__label">Restrunden (Rennen)</span>
+          <span class="fuel__value" id="laps-in-race"></span>
+        </div>
+        <div class="fuel__row fuel__row--highlight" id="add-row">
+          <span class="fuel__label">Zum Nachtanken</span>
+          <span class="fuel__value" id="to-add"></span>
+        </div>
+      </div>
+      <div class="widget__resize-grip" id="resize-grip"></div>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

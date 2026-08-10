@@ -1,0 +1,47 @@
+@import "../shared/overlay.css";
+
+.fuel {
+  min-width: 210px;
+}
+
+.fuel__body {
+  padding: 6px 10px;
+}
+
+.fuel__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 3px 0;
+  font-size: 13px;
+}
+
+.fuel__label {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.fuel__value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.fuel__row--highlight {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.fuel__row--highlight .fuel__value {
+  font-size: 15px;
+}
+
+/* Reicht der Sprit rechnerisch nicht bis zum Ende, faellt das sofort auf -
+   das ist der ganze Zweck dieses Overlays. */
+.fuel__row--ok .fuel__value {
+  color: var(--good);
+}
+
+.fuel__row--warn .fuel__value {
+  color: var(--warn);
+}

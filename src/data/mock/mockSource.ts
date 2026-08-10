@@ -9,10 +9,14 @@
 
 import type { BridgeMessage, Driver, DriverRosterEntry, SessionState, TelemetryFrame } from '../types.js';
 import type { DataSource } from '../connector.js';
+import { FuelTracker } from '../calc/fuel.js';
 
 const TRACK_LENGTH_M = 5793;
 const LAP_TIME_BASE = 103.5;
 const PLAYER_IDX = 2;
+const RACE_DURATION_SEC = 3600;
+/** Deckt sich mit dem realen SDK-Sentinel fuer "kein Rundenlimit", siehe calc/fuel.ts. */
+const UNLIMITED_LAPS_SENTINEL = 32767;
 
 const CLASSES = [
   { id: 4011, name: 'GTP', color: '#ff5b3a', relSpeed: 100, lapTime: 96 },
@@ -53,6 +57,7 @@ export class MockSource implements DataSource {
   private readonly cars: MockCar[];
   private readonly sessionMessage: BridgeMessage & { type: 'session' };
   private readonly startedAt = performance.now();
+  private readonly fuelTracker = new FuelTracker();
   private seq = 0;
   private sessionSent = false;
 
@@ -128,7 +133,7 @@ export class MockSource implements DataSource {
         lengthMeters: TRACK_LENGTH_M,
         pitSpeedLimitKph: 80,
       },
-      sessions: [{ num: 0, type: 'Race', laps: 'unlimited', timeSeconds: 3600 }],
+      sessions: [{ num: 0, type: 'Race', laps: 'unlimited', timeSeconds: RACE_DURATION_SEC }],
       drivers: roster,
       carClasses: CLASSES.filter((c) => classCounts.has(c.id))
         .map((c) => ({ id: c.id, name: c.name, color: c.color, relSpeed: c.relSpeed, carCount: classCounts.get(c.id)! }))
@@ -151,16 +156,25 @@ export class MockSource implements DataSource {
 
     const classPositions = new Map<number, number>();
     const seenPerClass = new Map<number, number>();
+    const classLeaderIdx = new Map<number, number>();
     for (const car of order) {
       const seen = (seenPerClass.get(car.carClass.id) ?? 0) + 1;
       seenPerClass.set(car.carClass.id, seen);
       classPositions.set(car.idx, seen);
+      if (seen === 1) classLeaderIdx.set(car.carClass.id, car.idx);
     }
 
     const drivers: Driver[] = this.cars.map((car) => {
       const p = progress.get(car.idx)!;
       const lapDistPct = p - Math.floor(p);
       const lap = Math.floor(p) + 1;
+      // Direkt aus der kontinuierlichen Fortschrittsdifferenz, nicht ueber
+      // die Umlaufkorrektur aus calc/gap.ts - die ist nur fuer Autos nahe
+      // beieinander gedacht (Relative), hier kann der Fuehrende mehrere
+      // Runden voraus sein. Bildet CarIdxF2Time nach, das im echten SDK
+      // schon die korrekte Gesamtzeit liefert.
+      const leaderIdx = classLeaderIdx.get(car.carClass.id)!;
+      const gapToLeaderSec = leaderIdx === car.idx ? 0 : (progress.get(leaderIdx)! - p) * car.lapTime;
       return {
         carIdx: car.idx,
         isPlayer: car.idx === PLAYER_IDX,
@@ -182,10 +196,16 @@ export class MockSource implements DataSource {
         trackSurface: 'on_track',
         lastLapSec: lap > 1 ? car.lapTime : null,
         bestLapSec: lap > 1 ? car.lapTime * 0.99 : null,
+        gapToLeaderSec,
       };
     });
 
     const playerProgress = progress.get(PLAYER_IDX)!;
+    // Wegen car.offset ist playerProgress kurz nach dem Start negativ. Ohne
+    // die Untergrenze zaehlt das als Rundenwechsel 0->1 nach nur ~2s und
+    // der FuelTracker haette eine erste "Runde" mit fast null Verbrauch im
+    // Mittelwert - reines Artefakt des Demo-Setups, kein echtes Renngeschehen.
+    const playerLap = Math.max(1, Math.floor(playerProgress) + 1);
     const lapPct = playerProgress - Math.floor(playerProgress);
     const phase = lapPct * Math.PI * 2;
     // Zwei ueberlagerte Sinuswellen ergeben ein Rundenprofil mit
@@ -195,9 +215,16 @@ export class MockSource implements DataSource {
     const brake = corner < -0.15 ? Math.max(0, Math.min(1, -corner * 0.9)) : 0;
     const speed = 30 + 65 * throttle * (1 - brake);
 
+    const fuelLevelLiters = Math.max(0, 78 - playerProgress * 2.9);
+    this.fuelTracker.update(playerLap, fuelLevelLiters, false);
+    const usePerLapLiters = this.fuelTracker.averagePerLapLiters;
+
     return {
       seq: this.seq,
       sessionTimeSec: elapsedSec,
+      sessionTimeRemainSec: Math.max(0, RACE_DURATION_SEC - elapsedSec),
+      // Zeitbasiertes Rennen in diesem Demo-Setup - kein Rundenlimit.
+      sessionLapsRemain: UNLIMITED_LAPS_SENTINEL,
       sessionState: 'racing',
       flags: ['green'],
       drivers,
@@ -208,9 +235,11 @@ export class MockSource implements DataSource {
         gear: Math.max(1, Math.min(6, Math.floor(speed / 13) + 1)),
         inputs: { throttle, brake, clutch: 0, steerRad: Math.sin(phase * 6) * 0.6 },
         fuel: {
-          levelLiters: Math.max(0, 78 - playerProgress * 2.9),
-          levelPct: Math.max(0, (78 - playerProgress * 2.9) / 110),
+          levelLiters: fuelLevelLiters,
+          levelPct: fuelLevelLiters / 110,
           usePerHourLiters: 101,
+          usePerLapLiters,
+          lapsRemainingOnFuel: usePerLapLiters ? fuelLevelLiters / usePerLapLiters : null,
         },
         delta: {
           toBestLapSec: Math.sin(phase * 3) * 0.4,
