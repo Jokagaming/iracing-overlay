@@ -27,6 +27,14 @@ let editMode = false;
 // das Icon kommentarlos aus der Taskleiste verschwinden.
 let tray: Tray | null = null;
 
+/** `--rate 20` -> 20. Ungueltig oder fehlend -> undefined (DataLayer nutzt dann seinen Standard). */
+function parseRateArg(argv: string[]): number | undefined {
+  const index = argv.indexOf('--rate');
+  if (index === -1 || index + 1 >= argv.length) return undefined;
+  const value = Number(argv[index + 1]);
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
 function toggleEditMode(): void {
   editMode = !editMode;
   setEditMode(overlayWindows, editMode);
@@ -46,8 +54,11 @@ app.whenReady().then(async () => {
   // --demo laesst die App ohne laufendes iRacing testen, z.B. via
   // `npm run dev -- --demo` im electron-vite-Entwicklungsmodus.
   const demo = process.argv.includes('--demo');
-  await dataLayer.start({ host: DATA_HOST, port: DATA_PORT, demo });
-  console.log(`[main] Datenlayer auf ws://${DATA_HOST}:${DATA_PORT}${demo ? ' (Demo-Modus)' : ''}`);
+  const telemetryHz = parseRateArg(process.argv);
+  await dataLayer.start({ host: DATA_HOST, port: DATA_PORT, demo, telemetryHz });
+  console.log(
+    `[main] Datenlayer auf ws://${DATA_HOST}:${DATA_PORT}${demo ? ' (Demo-Modus)' : ''}, Telemetrie ${telemetryHz ?? 30}Hz`,
+  );
 });
 
 // Bewusst KEIN app.quit() bei window-all-closed: die Overlays haben weder

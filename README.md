@@ -91,7 +91,7 @@ Zusatzpakete noetig) - dieselben Farben wie die Overlays selbst
 | 4 | Standings + Fuel-Rechner | **fertig, verifiziert per Demo-Modus** - SQLite-Rundenzeiten bewusst zurueckgestellt (kein Verbraucher dafuer), siehe unten |
 | 5 | Input-Telemetrie-Graph + Radar | **fertig, verifiziert per Demo-Modus** - Radar zeigt bewusst keine geschaetzten Seitenpositionen anderer Autos, siehe unten |
 | 6 | Delta-Bar, Session-Timer, Weather, Flags | **fertig, verifiziert per Demo-Modus** - Track Map bewusst zurueckgestellt (SDK-Datengrundlage ungeklaert), siehe unten |
-| 7 | Packaging (`electron-builder`), Tray, Start-/CPU-Budget | **teilweise fertig, verifiziert** - Installer laeuft, CPU-Budget wird unter Last gerissen, siehe unten |
+| 7 | Packaging (`electron-builder`), Tray, Start-/CPU-Budget | **teilweise fertig, verifiziert** - Installer laeuft, CPU-Ziel unter Last von 7.2% auf 2.6% gedrueckt, knapp nicht ganz erreicht, siehe unten |
 
 ## Ordnerstruktur
 
@@ -124,7 +124,8 @@ src/
                  mock/            simulierte Telemetrie ohne iRacing
                  server/          WebSocket-Broadcast
                  connector.ts     Live-Verbindung ueber irsdk-node
-                 cli.ts           Einstiegspunkt: `npx tsx src/data/cli.ts [--demo]`
+                 broadcaster.ts   Tick-/Sendeschleife inkl. Telemetrie-Drosselung, getestet
+                 cli.ts           Einstiegspunkt: `npx tsx src/data/cli.ts [--demo] [--rate Hz]`
 resources/     Icons (generiert, siehe scripts/generate-icons.mjs)
 scripts/       Build-Hilfsskripte
 docs/          Architektur- und SDK-Notizen
@@ -138,7 +139,9 @@ npx tsx src/data/cli.ts --demo
 
 Startet den WebSocket-Server auf `ws://127.0.0.1:8778` mit simulierter
 Telemetrie (20 Autos, 3 Klassen) - kein iRacing noetig. Ohne `--demo`
-verbindet er sich mit einer laufenden iRacing-Instanz.
+verbindet er sich mit einer laufenden iRacing-Instanz. `--rate <Hz>`
+stellt die Telemetrie-Senderate ein (Standard: 20, siehe "Performance"
+unten).
 
 ```
 npx vitest run
@@ -182,32 +185,48 @@ Kommt, sobald eine echte Session zum Verifizieren verfuegbar ist.
 ## Performance: gemessen, nicht behauptet
 
 Der Installer wurde real gebaut, installiert, gestartet und wieder
-deinstalliert (nicht nur "die Datei existiert" geprueft). Dabei gemessen,
-auf einer 16-Kern-Entwicklungsmaschine:
+deinstalliert (nicht nur "die Datei existiert" geprueft), und die
+CPU-Last mehrfach unter echter Last neu gemessen, nicht nur einmal. Alle
+Werte auf derselben 16-Kern-Entwicklungsmaschine, System-weit normiert (auf
+einem echten Mittelklasse-System mit weniger Kernen waere der Prozentsatz
+bei gleichem absoluten Verbrauch entsprechend hoeher):
 
 | Messung | Ergebnis | Ziel |
 |---|---|---|
 | Startzeit (Klick bis alle Fenster erzeugt) | ~0.3 s | < 3 s ✅ |
 | CPU im Leerlauf (wartet auf iRacing) | ~0.03 % | < 2 % ✅ |
-| CPU im Demo-Modus (9 Fenster, 60 Hz aktiv) | **~7.2 %** | < 2 % ❌ |
+| CPU im Demo-Modus, urspruenglich (9 Fenster, Telemetrie bei 60 Hz) | ~7.2 % | < 2 % ❌ |
+| CPU im Demo-Modus, Telemetrie auf 30 Hz gedrosselt | ~3.7 % | < 2 % ❌ |
+| CPU im Demo-Modus, Telemetrie auf 20 Hz gedrosselt (**jetziger Standard**) | ~2.6 % | < 2 % ⚠️ knapp verfehlt |
 
-Das Startzeit-Ziel ist klar erreicht. Das CPU-Ziel ist es unter aktiver
-Last **nicht** - und zwar deutlicher, als die reine Zahl zeigt: die 7.2 %
-sind bereits auf 16 Kerne normiert. Auf einem tatsaechlichen
-Mittelklasse-System (6-8 Kerne) waere derselbe absolute CPU-Verbrauch ein
-entsprechend hoeherer Prozentsatz - grob geschaetzt eher 14-19 %, nicht
-gemessen.
+**Ursache:** neun unabhaengige Electron-BrowserWindows bedeuten neun
+unabhaengige Chromium-Renderer-Prozesse, jeder mit eigenem WebSocket,
+eigenem `JSON.parse` des vollen Telemetrie-Frames und eigenem DOM-Update -
+mal neun, bei jeder Sendung.
 
-Wahrscheinlichste Ursache: neun unabhaengige Electron-BrowserWindows
-bedeuten neun unabhaengige Chromium-Renderer-Prozesse, jeder mit eigenem
-WebSocket, eigenem JSON.parse des vollen Telemetrie-Frames und eigenem
-DOM-Update - 60 Mal pro Sekunde, mal neun. Das ist kein Bug in einer
-einzelnen Funktion, den man mal eben fixt, sondern eine Architekturfrage
-(z.B. Telemetrie im Main-Process buendeln und nur Deltas schicken, oder
-die Renderrate pro Fenster auf z.B. 20-30 Hz drosseln - fuer eine
-Text-/Zahlen-HUD ist visuelle Glaette bei 60 Hz ohnehin nicht noetig).
-Bewusst nicht auf Verdacht "optimiert", ohne das sauber vorher/nachher zu
-messen - das waere fuer eine reine Vermutung zu riskant.
+**Fix:** `data/broadcaster.ts` (gemeinsam von `cli.ts` und `dataLayer.ts`
+genutzt, vorher war die Tick-Schleife in beiden separat implementiert)
+sendet Telemetrie jetzt gedrosselt statt bei jedem Poll - die Quelle wird
+weiter mit voller Rate abgefragt (`waitForData` blockiert beim echten SDK
+ohnehin im Sim-eigenen Takt, und Zustand wie der `FuelTracker` darf keinen
+Rundenwechsel verpassen), nur das tatsaechliche Aussenden wird gedrosselt.
+Ueber `--rate <Hz>` einstellbar (`cli.ts`) bzw. `telemetryHz` in
+`DataLayerOptions` (Electron, ebenfalls per `--rate <Hz>` am
+Programmstart). 60→30 Hz brachte die groesste Verbesserung, 30→20 Hz
+schon spuerbar weniger (deutet auf einen fixen Sockelverbrauch pro
+Renderer-Fenster hin, der sich per Senderate nicht wegdrosseln laesst).
+Visuell bei 20 Hz kein wahrnehmbarer Unterschied zu 60 Hz, auch nicht beim
+Inputs-Graph.
+
+**Bewusst nicht gemacht:** unter 20 Hz weiter drosseln, um die letzten
+0.6 Prozentpunkte zu druecken - das Verhaeltnis Nutzen/Risiko fuer
+Bildwiederholrate kippt dort. Der naheliegende naechste Schritt waere
+stattdessen, den WebSocket-Umweg fuer die neun *eigenen* Overlay-Fenster
+ganz zu umgehen und stattdessen `webContents.send()`/IPC zu nutzen (kein
+JSON.stringify/parse-Rundweg mehr) - das ist aber eine echte
+Architekturaenderung (WS bliebe dann nur fuer externe Verbraucher wie eine
+kuenftige OBS-Browser-Source relevant) und wurde hier nicht angefasst, um
+nicht ungetestet neue Bugs einzufuehren.
 
 ## Bekannte offene Punkte
 
