@@ -1,77 +1,45 @@
-import { app, BrowserWindow, globalShortcut, ipcMain } from 'electron';
-import { join } from 'node:path';
+import { app, globalShortcut } from 'electron';
+import type { BrowserWindow } from 'electron';
+import { DataLayer } from './dataLayer.js';
+import { createOverlayWindow, setEditMode } from './overlayWindow.js';
 
-// Meilenstein 0: nur ein einzelnes Testfenster. Sobald der Datenlayer
-// (Meilenstein 1) und mehrere Overlays (Meilenstein 2+) dazukommen, wird
-// daraus eine Registry von Fenstern pro Overlay-Typ.
 const EDIT_MODE_HOTKEY = 'Control+Alt+E';
+const DATA_HOST = '127.0.0.1';
+const DATA_PORT = 8778;
+// Bis Meilenstein 3 (Layout-Persistenz, Monitor-Auswahl) ist die Position
+// fest - der Nutzer kann noch nichts verschieben oder speichern.
+const RELATIVE_WINDOW = { entry: 'relative', x: 40, y: 40, width: 340, height: 260 };
 
-let testWindow: BrowserWindow | null = null;
+const dataLayer = new DataLayer();
+let overlayWindows: BrowserWindow[] = [];
 let editMode = false;
-
-function createTestWindow(): void {
-  testWindow = new BrowserWindow({
-    x: 100,
-    y: 100,
-    width: 420,
-    height: 170,
-    frame: false,
-    transparent: true,
-    resizable: false,
-    // Damit das Overlay nicht im Alt-Tab und in der Taskleiste auftaucht —
-    // es soll wie ein Teil des Sims wirken, nicht wie ein eigenes Programm.
-    skipTaskbar: true,
-    show: false,
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
-  });
-
-  // 'screen-saver' haelt das Fenster auch ueber Vollbild-Anwendungen im
-  // Borderless-Windowed-Modus oben. Bei echtem Fullscreen-Exclusive greift
-  // das nicht mehr, weil Windows dort gar nicht mehr komposittet
-  // (siehe docs/fullscreen-exclusive.md).
-  testWindow.setAlwaysOnTop(true, 'screen-saver');
-
-  // Ausserhalb des Edit-Modus muessen Klicks ungehindert zum Sim durchgehen,
-  // sonst blockiert das Overlay dessen Bedienung.
-  testWindow.setIgnoreMouseEvents(true);
-
-  testWindow.once('ready-to-show', () => testWindow?.show());
-
-  if (process.env.ELECTRON_RENDERER_URL) {
-    testWindow.loadURL(`${process.env.ELECTRON_RENDERER_URL}/test-overlay/`);
-  } else {
-    testWindow.loadFile(join(__dirname, '../renderer/test-overlay/index.html'));
-  }
-}
 
 function toggleEditMode(): void {
   editMode = !editMode;
-  // forward:true laesst Hover-Events weiter beim Renderer ankommen, falls
-  // spaeter Resize-Handles per CSS :hover reagieren sollen.
-  testWindow?.setIgnoreMouseEvents(!editMode, { forward: true });
-  testWindow?.webContents.send('edit-mode-changed', editMode);
+  setEditMode(overlayWindows, editMode);
   console.log(`[main] edit mode -> ${editMode}`);
 }
 
-app.whenReady().then(() => {
-  createTestWindow();
+app.whenReady().then(async () => {
+  overlayWindows = [createOverlayWindow(RELATIVE_WINDOW)];
 
   const registered = globalShortcut.register(EDIT_MODE_HOTKEY, toggleEditMode);
   if (!registered) {
     console.error(`[main] Hotkey ${EDIT_MODE_HOTKEY} konnte nicht registriert werden`);
   }
 
-  ipcMain.handle('get-edit-mode', () => editMode);
+  // --demo laesst die App ohne laufendes iRacing testen, z.B. via
+  // `npm run dev -- --demo` im electron-vite-Entwicklungsmodus.
+  const demo = process.argv.includes('--demo');
+  await dataLayer.start({ host: DATA_HOST, port: DATA_PORT, demo });
+  console.log(`[main] Datenlayer auf ws://${DATA_HOST}:${DATA_PORT}${demo ? ' (Demo-Modus)' : ''}`);
 });
 
 app.on('window-all-closed', () => {
   app.quit();
 });
 
-app.on('will-quit', () => {
+app.on('will-quit', async () => {
   globalShortcut.unregisterAll();
+  await dataLayer.stop();
 });

@@ -2,10 +2,9 @@ import { resolve } from 'node:path';
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 
 // Jedes Overlay bekommt einen eigenen Eintrag hier, sobald es dazukommt
-// (Relative, Standings, Fuel, ...). Fuer den Moment gibt es nur das
-// Testfenster aus Meilenstein 0.
+// (Standings, Fuel, ...).
 const rendererEntries = {
-  'test-overlay': resolve(__dirname, 'src/renderer/test-overlay/index.html'),
+  relative: resolve(__dirname, 'src/renderer/relative/index.html'),
 };
 
 export default defineConfig({

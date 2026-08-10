@@ -1,0 +1,204 @@
+/*
+ * Ein Overlay liegt ueber einem bewegten, hellen wie dunklen Bild. Alles
+ * hier zielt darauf, unter diesen Bedingungen im Vorbeischauen lesbar zu
+ * sein: kraeftiger Kontrast, ruhige Flaechen, keine Animationen, die den
+ * Blick von der Strecke ziehen.
+ */
+
+:root {
+  --bg: rgba(12, 14, 18, 0.85);
+  --bg-row: rgba(255, 255, 255, 0.04);
+  --bg-player: rgba(255, 214, 64, 0.16);
+  --border: rgba(255, 255, 255, 0.12);
+  --edit-border: #ffd640;
+
+  --text: #f2f4f8;
+  --text-dim: rgba(242, 244, 248, 0.55);
+  --text-strong: #ffffff;
+
+  --ahead: #ff7a5c;
+  --behind: #6fd3ff;
+  --player: #ffd640;
+  --pit: #ff4d6d;
+  --good: #57e08a;
+
+  --radius: 6px;
+  --row-height: 24px;
+  --font: "Segoe UI", -apple-system, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  overflow: hidden;
+  font-family: var(--font);
+  color: var(--text);
+  /* Ziffern muessen gleich breit sein, sonst zappeln die Abstandsspalten
+     bei jeder Aenderung horizontal. */
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+}
+
+.widget {
+  margin: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+  width: fit-content;
+}
+
+/* Gelber Rahmen im Edit-Modus - von aussen auf den ersten Blick erkennbar,
+   ob das Fenster gerade klickbar ist (siehe Meilenstein 0). */
+.widget[data-edit="true"] {
+  border-color: var(--edit-border);
+}
+
+.widget__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+}
+
+.widget__status {
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.is-hidden {
+  display: none;
+}
+
+.relative {
+  min-width: 300px;
+}
+
+.relative__session {
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.relative__table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.relative__table td {
+  height: var(--row-height);
+  padding: 0 6px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.relative__row:nth-child(even) {
+  background: var(--bg-row);
+}
+
+.relative__row--player {
+  background: var(--bg-player);
+}
+
+.relative__row--player .relative__name {
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+.relative__row--pit {
+  opacity: 0.5;
+}
+
+/* Farbbalken der Fahrzeugklasse - im Multiclass die wichtigste Information
+   der Zeile, deshalb ganz links und ohne Text. */
+.relative__class {
+  width: 4px;
+  padding: 0 !important;
+  background: var(--class-color, transparent);
+}
+
+.relative__position {
+  width: 26px;
+  text-align: right;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.relative__number {
+  width: 30px;
+  text-align: right;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.relative__name {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.relative__irating {
+  width: 34px;
+  text-align: right;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.relative__laps {
+  width: 24px;
+  text-align: right;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.relative__laps--up {
+  color: var(--good);
+}
+
+.relative__laps--down {
+  color: var(--pit);
+}
+
+.relative__gap {
+  width: 48px;
+  text-align: right;
+  font-weight: 600;
+}
+
+.relative__gap--ahead {
+  color: var(--ahead);
+}
+
+.relative__gap--behind {
+  color: var(--behind);
+}
+
+.relative__gap--player {
+  color: var(--player);
+}
+
+.relative__pit {
+  color: var(--pit);
+  font-size: 10px;
+  font-weight: 700;
+}
