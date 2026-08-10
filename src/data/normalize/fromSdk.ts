@@ -22,7 +22,7 @@ import type {
   TrackInfo,
   WeatherState,
 } from '../types.js';
-import { decodeCarLeftRight, decodeFlags, decodeSessionState, decodeTrackLocation, toCssColor } from './enums.js';
+import { decodeCarLeftRight, decodeFlags, decodeSessionState, decodeTrackLocation, decodeTrackWetness, toCssColor } from './enums.js';
 
 // --- Hilfsfunktionen zum Auspacken von TelemetryVariable -------------------
 
@@ -201,7 +201,7 @@ function buildWeather(t: TelemetryVarList): WeatherState {
     airTempC: scalarNum(t.AirTemp),
     trackTempC: scalarNum(t.TrackTempCrew),
     humidityPct: scalarNum(t.RelativeHumidity),
-    trackWetness: String(scalarNum(t.TrackWetness)),
+    trackWetness: decodeTrackWetness(scalarNum(t.TrackWetness)),
   };
 }
 

@@ -172,13 +172,23 @@ export interface PlayerState {
   carLeftRight: CarLeftRight;
 }
 
+// UNSICHER: Enum-Werte nur fuer Rain-faehige Inhalte belastbar, sonst
+// praktisch immer "dry".
+export type TrackWetness =
+  | 'unknown'
+  | 'dry'
+  | 'mostly_dry'
+  | 'very_lightly_wet'
+  | 'lightly_wet'
+  | 'moderately_wet'
+  | 'very_wet'
+  | 'extremely_wet';
+
 export interface WeatherState {
   airTempC: number;
   trackTempC: number;
   humidityPct: number;
-  // UNSICHER: Enum-Werte nur fuer Rain-faehige Inhalte belastbar, sonst
-  // praktisch immer "dry".
-  trackWetness: string;
+  trackWetness: TrackWetness;
 }
 
 export type SdkSessionState =

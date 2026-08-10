@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>Delta</title>
+    <link rel="stylesheet" href="delta.css" />
+  </head>
+  <body>
+    <div class="widget delta" id="widget">
+      <div class="widget__header">
+        <span>Delta</span>
+      </div>
+      <div class="widget__status" id="status">Verbinde mit der Bridge ...</div>
+      <div class="delta__body is-hidden" id="body">
+        <div class="delta__value" id="value">+0.000</div>
+        <div class="delta__bar">
+          <div class="delta__fill" id="fill"></div>
+          <div class="delta__center"></div>
+        </div>
+      </div>
+      <div class="widget__resize-grip" id="resize-grip"></div>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

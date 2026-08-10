@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>Weather</title>
+    <link rel="stylesheet" href="weather.css" />
+  </head>
+  <body>
+    <div class="widget weather" id="widget">
+      <div class="widget__header">
+        <span>Weather</span>
+      </div>
+      <div class="widget__status" id="status">Verbinde mit der Bridge ...</div>
+      <div class="weather__body is-hidden" id="body">
+        <div class="weather__row">
+          <span class="weather__label">Luft</span>
+          <span class="weather__value" id="air"></span>
+        </div>
+        <div class="weather__row">
+          <span class="weather__label">Strecke</span>
+          <span class="weather__value" id="track"></span>
+        </div>
+        <div class="weather__row">
+          <span class="weather__label">Feuchte</span>
+          <span class="weather__value" id="humidity"></span>
+        </div>
+        <div class="weather__row">
+          <span class="weather__label">Zustand</span>
+          <span class="weather__value" id="wetness"></span>
+        </div>
+      </div>
+      <div class="widget__resize-grip" id="resize-grip"></div>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

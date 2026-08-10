@@ -1,0 +1,58 @@
+@import "../shared/overlay.css";
+
+.delta {
+  min-width: 160px;
+}
+
+.delta__body {
+  padding: 8px 10px;
+}
+
+.delta__value {
+  text-align: center;
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.delta__value--ahead {
+  color: var(--good);
+}
+
+.delta__value--behind {
+  color: var(--pit);
+}
+
+.delta__bar {
+  position: relative;
+  margin-top: 6px;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+/* Waechst von der Mitte aus nach links (schneller, gruen) oder rechts
+   (langsamer, rot) statt von 0 - das Vorzeichen ist so auf den ersten
+   Blick an der Richtung erkennbar, nicht nur an der Farbe. */
+.delta__fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 0%;
+  background: var(--good);
+}
+
+.delta__fill--behind {
+  background: var(--pit);
+}
+
+.delta__center {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.3);
+}

@@ -9,8 +9,12 @@
  * (ein Objekt pro Fahrer/Session), nicht pro Tick neu erzeugt.
  */
 
-/** Iracing markiert "kein Rundenlimit" mit diesem Sentinel-Wert (0x7FFF). */
-const UNLIMITED_LAPS_SENTINEL = 32767;
+/**
+ * Iracing markiert "kein Rundenlimit" mit diesem Sentinel-Wert (0x7FFF).
+ * Exportiert, weil auch das Session-Timer-Overlay wissen muss, ob eine
+ * Rundenzahl echt oder nur der Platzhalter ist.
+ */
+export const UNLIMITED_LAPS_SENTINEL = 32767;
 
 /**
  * Sehr grosser Wert fuer SessionTimeRemain wird ebenso als "kein Zeitlimit"
@@ -19,7 +23,7 @@ const UNLIMITED_LAPS_SENTINEL = 32767;
  * iRacing-Community gut dokumentiert ist) - 24h ist eine defensive Grenze,
  * kein verifizierter SDK-Wert.
  */
-const IMPLAUSIBLE_TIME_REMAIN_SEC = 24 * 60 * 60;
+export const IMPLAUSIBLE_TIME_REMAIN_SEC = 24 * 60 * 60;
 
 const HISTORY_LENGTH = 10;
 

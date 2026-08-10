@@ -1,0 +1,31 @@
+@import "../shared/overlay.css";
+
+.weather {
+  min-width: 170px;
+}
+
+.weather__body {
+  padding: 6px 10px;
+}
+
+.weather__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 3px 0;
+  font-size: 13px;
+}
+
+.weather__label {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.weather__value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.weather__value--wet {
+  color: var(--behind);
+}

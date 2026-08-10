@@ -1,0 +1,32 @@
+@import "../shared/overlay.css";
+
+.timer {
+  min-width: 140px;
+}
+
+#state {
+  font-variant-numeric: normal;
+}
+
+.timer__body {
+  padding: 8px 10px;
+  text-align: center;
+}
+
+.timer__clock {
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer__sub {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* Letzte Runden bzw. wenig Zeit - der Countdown alleine faellt in der
+   Hektik am Renn-Ende leicht unter, eine Farbaenderung nicht. */
+.timer__clock--warn {
+  color: var(--warn);
+}

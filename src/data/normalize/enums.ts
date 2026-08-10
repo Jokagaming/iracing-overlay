@@ -7,8 +7,14 @@
  * node_modules/@irsdk-node/types/dist/types/defines.d.ts.
  */
 
-import { CarLeftRight as SdkCarLeftRight, GlobalFlags, SessionState as SdkSessionStateEnum, TrackLocation as SdkTrackLocation } from '@irsdk-node/types';
-import type { CarLeftRight, SdkSessionState, TrackLocation } from '../types.js';
+import {
+  CarLeftRight as SdkCarLeftRight,
+  GlobalFlags,
+  SessionState as SdkSessionStateEnum,
+  TrackLocation as SdkTrackLocation,
+  TrackWetness as SdkTrackWetness,
+} from '@irsdk-node/types';
+import type { CarLeftRight, SdkSessionState, TrackLocation, TrackWetness } from '../types.js';
 
 const FLAG_BITS: Array<[string, number]> = Object.entries(GlobalFlags)
   .filter((entry): entry is [string, number] => typeof entry[1] === 'number')
@@ -78,4 +84,24 @@ const CAR_LEFT_RIGHT: Record<number, CarLeftRight> = {
 export function decodeCarLeftRight(value: number | null | undefined): CarLeftRight {
   if (value == null) return 'off';
   return CAR_LEFT_RIGHT[value] ?? 'off';
+}
+
+const TRACK_WETNESS: Record<number, TrackWetness> = {
+  [SdkTrackWetness.UNKNOWN]: 'unknown',
+  [SdkTrackWetness.Dry]: 'dry',
+  [SdkTrackWetness.MostlyDry]: 'mostly_dry',
+  [SdkTrackWetness.VeryLightlyWet]: 'very_lightly_wet',
+  [SdkTrackWetness.LightlyWet]: 'lightly_wet',
+  [SdkTrackWetness.ModeratelyWet]: 'moderately_wet',
+  [SdkTrackWetness.VeryWet]: 'very_wet',
+  [SdkTrackWetness.ExtremelyWet]: 'extremely_wet',
+};
+
+/**
+ * Nasszustand der Strecke. UNSICHER: nur fuer Rain-faehige Inhalte
+ * belastbar, sonst praktisch immer "dry" (siehe types.ts).
+ */
+export function decodeTrackWetness(value: number | null | undefined): TrackWetness {
+  if (value == null) return 'unknown';
+  return TRACK_WETNESS[value] ?? 'unknown';
 }

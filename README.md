@@ -34,9 +34,9 @@ npm run dev
 ```
 
 Startet Electron im Dev-Modus mit Hot-Reload, verbindet sich mit einer
-laufenden iRacing-Instanz und zeigt fuenf Overlays (Relative, Standings,
-Fuel, Inputs, Radar): transparent, always-on-top, standardmaessig
-klickdurchlaessig. `Strg+Alt+E` schaltet
+laufenden iRacing-Instanz und zeigt neun Overlays (Relative, Standings,
+Fuel, Inputs, Radar, Delta, Session-Timer, Weather, Flags): transparent,
+always-on-top, standardmaessig klickdurchlaessig. `Strg+Alt+E` schaltet
 einen Edit-Modus um (gelber Rahmen). Im Edit-Modus laesst sich jedes
 Fenster einzeln per Ziehen verschieben (auch auf einen anderen Monitor -
 das *ist* die Monitor-Auswahl, es gibt dafuer kein eigenes Dropdown) und
@@ -65,7 +65,7 @@ Aufrufer ist ein anderer, siehe `src/main/dataLayer.ts`.
 | 3 | Edit-Modus wird nutzbar (Verschieben, Groesse aendern), Layout-Persistenz, Monitor-Auswahl | **teilweise fertig, verifiziert** - Auto-Switch nach Auto/Serie/Session-Typ fehlt noch, siehe unten |
 | 4 | Standings + Fuel-Rechner | **fertig, verifiziert per Demo-Modus** - SQLite-Rundenzeiten bewusst zurueckgestellt (kein Verbraucher dafuer), siehe unten |
 | 5 | Input-Telemetrie-Graph + Radar | **fertig, verifiziert per Demo-Modus** - Radar zeigt bewusst keine geschaetzten Seitenpositionen anderer Autos, siehe unten |
-| 6 | Track Map, Delta-Bar/Timer/Weather/Flags | offen |
+| 6 | Delta-Bar, Session-Timer, Weather, Flags | **fertig, verifiziert per Demo-Modus** - Track Map bewusst zurueckgestellt (SDK-Datengrundlage ungeklaert), siehe unten |
 | 7 | Packaging (`electron-builder`), Tray, Start-/CPU-Budget | offen |
 
 ## Ordnerstruktur
@@ -86,6 +86,10 @@ src/
                  fuel/             Verbrauch, Restrunden, Nachtankmenge (Meilenstein 4)
                  inputs/           Gas/Bremse/Lenkung als Graph, Gang+Drehzahl (Meilenstein 5)
                  radar/            Naehe-Warnung + Autos in der Umgebung (Meilenstein 5)
+                 delta/            Abstand zur eigenen Bestzeit (Meilenstein 6)
+                 timer/            Session-Countdown, Runden/Zeit (Meilenstein 6)
+                 weather/          Luft-/Streckentemperatur, Nasszustand (Meilenstein 6)
+                 flags/            Aktive Streckenflaggen (Meilenstein 6)
   data/        Datenlayer, eigenstaendig lauffaehig ohne Electron:
                  types.ts        normalisiertes Modell
                  calc/            reine Funktionen (Relative-Gap, Fuel-Planung, Standings), getestet
@@ -129,6 +133,22 @@ Die Lenkwinkel-Linie im Inputs-Graph ist aus demselben Grund eine
 Naeherung: `SteeringWheelAngle` kommt ohne das tatsaechliche Maximum des
 jeweiligen Fahrzeugs/Lenkrads, `inputs/main.ts` nimmt einen festen,
 plausiblen Bereich (±3.5 rad) an statt einen exakten Wert vorzutaeuschen.
+
+## Track Map: bewusst zurueckgestellt
+
+Das SDK liefert keine direkten 2D-Weltkoordinaten (kein `PositionX/Y`, kein
+GPS-artiges `Lat`/`Lon`). Eine Streckenkarte liesse sich nur per
+Dead-Reckoning rekonstruieren: `VelocityX`/`VelocityY` ueber die Zeit
+integrieren, dabei mit `YawNorth` in Weltkoordinaten rotieren, und den
+Fehler pro Runde gegen `LapDistPct` = 1.0 korrigieren. Das Problem: die
+generierten Typen dokumentieren nur "X velocity" / "Y velocity" - ob das
+ueberhaupt fahrzeug- oder weltbezogene Achsen sind, ist nicht klar, und das
+laesst sich ohne eine laufende iRacing-Session nicht verifizieren (siehe
+naechster Abschnitt - der Sim-Prozess lief bislang bei keinem
+Arbeitsschritt). Eine Rekonstruktion auf einer geratenen Achskonvention zu
+bauen haette im Demo-Modus problemlos ausgesehen und waere an echten Daten
+vermutlich falsch gewesen - das wollte ich nicht ungeprueft abliefern.
+Kommt, sobald eine echte Session zum Verifizieren verfuegbar ist.
 
 ## Bekannte offene Punkte
 

@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>Session</title>
+    <link rel="stylesheet" href="timer.css" />
+  </head>
+  <body>
+    <div class="widget timer" id="widget">
+      <div class="widget__header">
+        <span>Session</span>
+        <span id="state"></span>
+      </div>
+      <div class="widget__status" id="status">Verbinde mit der Bridge ...</div>
+      <div class="timer__body is-hidden" id="body">
+        <div class="timer__clock" id="clock"></div>
+        <div class="timer__sub" id="sub"></div>
+      </div>
+      <div class="widget__resize-grip" id="resize-grip"></div>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

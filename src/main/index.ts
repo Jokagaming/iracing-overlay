@@ -13,6 +13,10 @@ const OVERLAY_WINDOWS = [
   { id: 'fuel', x: 40, y: 320, width: 220, height: 190 },
   { id: 'inputs', x: 780, y: 40, width: 300, height: 150 },
   { id: 'radar', x: 780, y: 210, width: 150, height: 220 },
+  { id: 'delta', x: 40, y: 530, width: 180, height: 90 },
+  { id: 'timer', x: 240, y: 530, width: 150, height: 100 },
+  { id: 'weather', x: 410, y: 530, width: 190, height: 130 },
+  { id: 'flags', x: 620, y: 530, width: 160, height: 60 },
 ];
 
 const dataLayer = new DataLayer();
