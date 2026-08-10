@@ -43,9 +43,9 @@ aufbauen.
 | Meilenstein | Inhalt | Status |
 |---|---|---|
 | 0 | Electron-Grundgerued, transparentes Always-on-Top-Testfenster, Hotkey togglet Klickdurchlaessigkeit | **fertig, verifiziert** (Klick bei AN geht durch, bei Edit-Modus kommt er an) |
-| 1 | Datenlayer eigenstaendig: SDK-Connector, Mock/Replay-Provider, Normalizer, WebSocket-Server | offen |
+| 1 | Datenlayer eigenstaendig: SDK-Connector, Mock-Provider, Normalizer, WebSocket-Server | **fertig, verifiziert per Demo-Modus** (Live-Anbindung noch nicht gegen echtes iRacing getestet, siehe unten) |
 | 2 | Erstes echtes Overlay (Relative) in Electron eingebunden | offen |
-| 3 | Edit-Modus + Layout-Persistenz, Auto-Switch nach Auto/Serie/Session-Typ | offen |
+| 3 | Edit-Modus + Layout-Persistenz, Auto-Switch nach Auto/Serie/Session-Typ, **Monitor-Auswahl pro Overlay** | offen |
 | 4 | Standings + Fuel-Rechner, SQLite-Rundenzeiten | offen |
 | 5 | Input-Telemetrie-Graph + Radar | offen |
 | 6 | Track Map, Delta-Bar/Timer/Weather/Flags | offen |
@@ -58,16 +58,41 @@ src/
   main/        Electron Main-Process (Fensterverwaltung, Hotkeys)
   preload/     contextBridge-APIs fuer die Renderer
   renderer/    ein Ordner pro Overlay/Fenster, je ein Vite-Eintrag
+  data/        Datenlayer, eigenstaendig lauffaehig ohne Electron:
+                 types.ts        normalisiertes Modell
+                 calc/            reine Funktionen (Relative-Gap, ...), getestet
+                 normalize/       SDK-Rohdaten -> normalisiertes Modell
+                 mock/            simulierte Telemetrie ohne iRacing
+                 server/          WebSocket-Broadcast
+                 connector.ts     Live-Verbindung ueber irsdk-node
+                 cli.ts           Einstiegspunkt: `npx tsx src/data/cli.ts [--demo]`
 docs/          Architektur- und SDK-Notizen
 ```
 
-Der Datenlayer (`packages/data/` — SDK-Connector, Normalizer, Berechnungen,
-WebSocket-Server) kommt in Meilenstein 1 als eigenstaendiges, ohne Electron
-lauffaehiges Paket dazu.
+## Datenlayer selbststaendig testen
+
+```
+npx tsx src/data/cli.ts --demo
+```
+
+Startet den WebSocket-Server auf `ws://127.0.0.1:8778` mit simulierter
+Telemetrie (20 Autos, 3 Klassen) - kein iRacing noetig. Ohne `--demo`
+verbindet er sich mit einer laufenden iRacing-Instanz.
+
+```
+npx vitest run
+```
+
+Testet die reinen Berechnungsfunktionen (`src/data/calc/`).
 
 ## Bekannte offene Punkte
 
-Als "UNSICHER" markierte SDK-Feldnamen/Semantik werden erst gegen echte
-iRacing-Daten verifiziert, sobald eine Session verfuegbar ist — siehe
-Kommentare im normalisierten Datenmodell (`packages/data/src/normalize/types.ts`,
-entsteht in Meilenstein 1).
+- Als "UNSICHER" markierte SDK-Feldnamen/Semantik (`src/data/types.ts`)
+  sind erst gegen echte iRacing-Daten verifiziert, sobald eine Session
+  laeuft - bisher nur gegen den Demo-Modus getestet.
+- `irsdk-node`s Umgang mit fehlerhaft formatierter Session-YAML (Sonderzeichen
+  in Fahrernamen, Team-Events) ist ungeprueft; IRSDKSharper (C#) patcht dafuer
+  bekannte Faelle, ob `irsdk-node` das auch tut, ist offen.
+- Die Kompatibilitaet von `irsdk-node`s nativen Bindings mit Electrons
+  Node-ABI ist noch nicht getestet (relevant fuer Meilenstein 2, wenn der
+  Datenlayer in den Electron-Main-Process eingebunden wird).

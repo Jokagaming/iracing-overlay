@@ -1,0 +1,65 @@
+/**
+ * Uebersetzt die numerischen Enums aus `@irsdk-node/types` in die
+ * lesbaren String-Werte des normalisierten Modells.
+ *
+ * Die Enum-Werte selbst (z.B. `GlobalFlags.Green = 4`) sind von
+ * `@irsdk-node/types` generiert, nicht von Hand abgetippt - siehe
+ * node_modules/@irsdk-node/types/dist/types/defines.d.ts.
+ */
+
+import { GlobalFlags, SessionState as SdkSessionStateEnum, TrackLocation as SdkTrackLocation } from '@irsdk-node/types';
+import type { SdkSessionState, TrackLocation } from '../types.js';
+
+const FLAG_BITS: Array<[string, number]> = Object.entries(GlobalFlags)
+  .filter((entry): entry is [string, number] => typeof entry[1] === 'number')
+  .sort((a, b) => a[1] - b[1]);
+
+/** "CautionWaving" -> "caution_waving", passend zum Rest des JSON-Protokolls. */
+function toSnakeCase(name: string): string {
+  return name.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+}
+
+/** Aktive Streckenflaggen. iRacing setzt mehrere Bits gleichzeitig. */
+export function decodeFlags(value: number | null | undefined): string[] {
+  if (!value) return [];
+  return FLAG_BITS.filter(([, bit]) => (value & bit) !== 0).map(([name]) => toSnakeCase(name));
+}
+
+const TRACK_LOCATION: Record<number, TrackLocation> = {
+  [SdkTrackLocation.NotInWorld]: 'not_in_world',
+  [SdkTrackLocation.OffTrack]: 'off_track',
+  [SdkTrackLocation.InPitStall]: 'in_pit_stall',
+  [SdkTrackLocation.ApproachingPits]: 'approaching_pits',
+  [SdkTrackLocation.OnTrack]: 'on_track',
+};
+
+/** Wo sich ein Auto befindet: Strecke, Boxengasse, Box, ausserhalb der Welt. */
+export function decodeTrackLocation(value: number | null | undefined): TrackLocation {
+  if (value == null) return 'not_in_world';
+  return TRACK_LOCATION[value] ?? 'not_in_world';
+}
+
+const SESSION_STATE: Record<number, SdkSessionState> = {
+  [SdkSessionStateEnum.Invalid]: 'invalid',
+  [SdkSessionStateEnum.GetInCar]: 'get_in_car',
+  [SdkSessionStateEnum.Warmup]: 'warmup',
+  [SdkSessionStateEnum.ParadeLaps]: 'parade_laps',
+  [SdkSessionStateEnum.Racing]: 'racing',
+  [SdkSessionStateEnum.Checkered]: 'checkered',
+  [SdkSessionStateEnum.CoolDown]: 'cool_down',
+};
+
+/** Phase der Session: Warmup, Paradenrunden, Rennen, abgewinkt. */
+export function decodeSessionState(value: number | null | undefined): SdkSessionState {
+  if (value == null) return 'invalid';
+  return SESSION_STATE[value] ?? 'invalid';
+}
+
+/**
+ * Macht aus den Farbwerten der Session-YAML etwas, das CSS direkt versteht.
+ * `CarClassColor` kommt als Dezimalzahl (0xRRGGBB) aus dem SDK.
+ */
+export function toCssColor(value: number | null | undefined): string | null {
+  if (value == null) return null;
+  return `#${(value & 0xffffff).toString(16).padStart(6, '0')}`;
+}
