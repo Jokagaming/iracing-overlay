@@ -1,0 +1,32 @@
+appId: de.jokagaming.iracing-overlay
+productName: iRacing Overlay
+
+directories:
+  output: dist
+
+# electron-vite baut nach out/ (main/preload/renderer) - das ist alles,
+# was fuer den gepackten Build gebraucht wird. package.json wird von
+# electron-builder ohnehin automatisch mitgenommen.
+files:
+  - out/**/*
+  - package.json
+
+# resources/ enthaelt die per scripts/generate-icons.mjs erzeugten Icons.
+# tray-icon.png wird zur Laufzeit gebraucht (src/main/resources.ts) und
+# muss deshalb als Ressource mitkopiert werden, nicht nur als Build-Input
+# fuer den Installer.
+extraResources:
+  - from: resources
+    to: .
+    filter:
+      - '*.png'
+
+win:
+  target: nsis
+  icon: resources/icon.ico
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true

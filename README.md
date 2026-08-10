@@ -16,7 +16,7 @@ Assets-/Code-/Design-Klon).
   (aktiv gepflegt; `node-irsdk` ist seit Jahren tot). Wird in Meilenstein 1
   eingebunden, inkl. Test der Kompatibilitaet mit Electrons Node-ABI.
 - Build: `electron-vite` (Vite fuer Main-, Preload- und mehrere
-  Renderer-Bundles).
+  Renderer-Bundles), `electron-builder` fuer den Windows-Installer (NSIS).
 - `better-sqlite3` fuer ein Rundenzeiten-Log ist bewusst noch nicht eingebaut
   - Standings und Fuel-Rechner brauchen es nicht (Bestzeit/Verbrauch kommen
   live aus der Telemetrie), es haette also noch keinen Verbraucher gehabt.
@@ -55,6 +55,31 @@ Der Datenlayer laeuft dabei direkt im Electron-Main-Process (nicht als
 separater Prozess wie `src/data/cli.ts`) - der Code ist identisch, nur der
 Aufrufer ist ein anderer, siehe `src/main/dataLayer.ts`.
 
+Da alle Overlay-Fenster rahmenlos sind und keinen Schliessen-Button haben,
+ist der **System-Tray** (gelber Punkt) die einzige Stelle, um die App zu
+steuern: Klick oeffnet ein Menue mit "Edit-Modus" (derselbe Toggle wie
+`Strg+Alt+E`) und "Beenden". Ohne den Tray liesse sich die App nur ueber
+den Task-Manager beenden.
+
+## Installer bauen
+
+```
+npm run icons     # einmalig, oder nach Aenderung des Icon-Motivs
+npm run package
+```
+
+Baut `dist/iRacing Overlay Setup <Version>.exe` (NSIS, pro Benutzer
+installierbar, kein Administrator noetig). `electron-builder` baut dabei
+automatisch `@irsdk-node/native` gegen die gepackte Electron-Node-ABI neu
+(via `@electron/rebuild`) - das lief beim Testen ohne manuelles Eingreifen
+durch.
+
+`resources/icon.ico` und `resources/tray-icon.png` sind nicht von Hand
+gezeichnet, sondern per `scripts/generate-icons.mjs` erzeugt (reines
+Byte-Schreiben nach ICO-/PNG-Format, keine externen Bildwerkzeuge oder
+Zusatzpakete noetig) - dieselben Farben wie die Overlays selbst
+(`--bg`, `--player`).
+
 ## Status
 
 | Meilenstein | Inhalt | Status |
@@ -66,7 +91,7 @@ Aufrufer ist ein anderer, siehe `src/main/dataLayer.ts`.
 | 4 | Standings + Fuel-Rechner | **fertig, verifiziert per Demo-Modus** - SQLite-Rundenzeiten bewusst zurueckgestellt (kein Verbraucher dafuer), siehe unten |
 | 5 | Input-Telemetrie-Graph + Radar | **fertig, verifiziert per Demo-Modus** - Radar zeigt bewusst keine geschaetzten Seitenpositionen anderer Autos, siehe unten |
 | 6 | Delta-Bar, Session-Timer, Weather, Flags | **fertig, verifiziert per Demo-Modus** - Track Map bewusst zurueckgestellt (SDK-Datengrundlage ungeklaert), siehe unten |
-| 7 | Packaging (`electron-builder`), Tray, Start-/CPU-Budget | offen |
+| 7 | Packaging (`electron-builder`), Tray, Start-/CPU-Budget | **teilweise fertig, verifiziert** - Installer laeuft, CPU-Budget wird unter Last gerissen, siehe unten |
 
 ## Ordnerstruktur
 
@@ -77,6 +102,8 @@ src/
                  overlayWindow.ts  Fenster erzeugen, Drag/Resize, Persistenz verdrahten
                  layoutStore.ts    Fenstergeometrie als JSON im Nutzerprofil
                  dataLayer.ts      startet den Datenlayer im Main-Process
+                 tray.ts           System-Tray: Edit-Modus, Beenden
+                 resources.ts      findet Icons in Dev- und gepacktem Build
   preload/     contextBridge-APIs fuer die Renderer
   renderer/    ein Ordner pro Overlay/Fenster, je ein Vite-Eintrag
                  shared/           Overlay-uebergreifend: WS-Client, Formatierung,
@@ -98,6 +125,8 @@ src/
                  server/          WebSocket-Broadcast
                  connector.ts     Live-Verbindung ueber irsdk-node
                  cli.ts           Einstiegspunkt: `npx tsx src/data/cli.ts [--demo]`
+resources/     Icons (generiert, siehe scripts/generate-icons.mjs)
+scripts/       Build-Hilfsskripte
 docs/          Architektur- und SDK-Notizen
 ```
 
@@ -149,6 +178,36 @@ Arbeitsschritt). Eine Rekonstruktion auf einer geratenen Achskonvention zu
 bauen haette im Demo-Modus problemlos ausgesehen und waere an echten Daten
 vermutlich falsch gewesen - das wollte ich nicht ungeprueft abliefern.
 Kommt, sobald eine echte Session zum Verifizieren verfuegbar ist.
+
+## Performance: gemessen, nicht behauptet
+
+Der Installer wurde real gebaut, installiert, gestartet und wieder
+deinstalliert (nicht nur "die Datei existiert" geprueft). Dabei gemessen,
+auf einer 16-Kern-Entwicklungsmaschine:
+
+| Messung | Ergebnis | Ziel |
+|---|---|---|
+| Startzeit (Klick bis alle Fenster erzeugt) | ~0.3 s | < 3 s ✅ |
+| CPU im Leerlauf (wartet auf iRacing) | ~0.03 % | < 2 % ✅ |
+| CPU im Demo-Modus (9 Fenster, 60 Hz aktiv) | **~7.2 %** | < 2 % ❌ |
+
+Das Startzeit-Ziel ist klar erreicht. Das CPU-Ziel ist es unter aktiver
+Last **nicht** - und zwar deutlicher, als die reine Zahl zeigt: die 7.2 %
+sind bereits auf 16 Kerne normiert. Auf einem tatsaechlichen
+Mittelklasse-System (6-8 Kerne) waere derselbe absolute CPU-Verbrauch ein
+entsprechend hoeherer Prozentsatz - grob geschaetzt eher 14-19 %, nicht
+gemessen.
+
+Wahrscheinlichste Ursache: neun unabhaengige Electron-BrowserWindows
+bedeuten neun unabhaengige Chromium-Renderer-Prozesse, jeder mit eigenem
+WebSocket, eigenem JSON.parse des vollen Telemetrie-Frames und eigenem
+DOM-Update - 60 Mal pro Sekunde, mal neun. Das ist kein Bug in einer
+einzelnen Funktion, den man mal eben fixt, sondern eine Architekturfrage
+(z.B. Telemetrie im Main-Process buendeln und nur Deltas schicken, oder
+die Renderrate pro Fenster auf z.B. 20-30 Hz drosseln - fuer eine
+Text-/Zahlen-HUD ist visuelle Glaette bei 60 Hz ohnehin nicht noetig).
+Bewusst nicht auf Verdacht "optimiert", ohne das sauber vorher/nachher zu
+messen - das waere fuer eine reine Vermutung zu riskant.
 
 ## Bekannte offene Punkte
 

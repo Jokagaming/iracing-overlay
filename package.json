@@ -7,16 +7,19 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "typecheck": "tsc -b --noEmit",
-    "data": "tsx src/data/cli.ts"
+    "data": "tsx src/data/cli.ts",
+    "icons": "node scripts/generate-icons.mjs",
+    "package": "electron-vite build && electron-builder --win"
   },
   "keywords": [],
-  "author": "",
+  "author": "Jokagaming",
   "license": "ISC",
   "private": "true",
   "devDependencies": {
     "@types/node": "^26.2.0",
     "@types/ws": "^8.18.1",
     "electron": "^43.3.0",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2",
@@ -26,7 +29,8 @@
   "allowScripts": {
     "esbuild@0.25.12": true,
     "esbuild@0.28.2": true,
-    "@irsdk-node/native@5.4.0": true
+    "@irsdk-node/native@5.4.0": true,
+    "electron-winstaller@5.4.0": true
   },
   "main": "out/main/index.js",
   "dependencies": {

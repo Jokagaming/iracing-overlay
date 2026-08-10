@@ -1,7 +1,8 @@
 import { app, globalShortcut } from 'electron';
-import type { BrowserWindow } from 'electron';
+import type { BrowserWindow, Tray } from 'electron';
 import { DataLayer } from './dataLayer.js';
 import { createOverlayWindow, setEditMode } from './overlayWindow.js';
+import { createTray } from './tray.js';
 
 const EDIT_MODE_HOTKEY = 'Control+Alt+E';
 const DATA_HOST = '127.0.0.1';
@@ -22,6 +23,9 @@ const OVERLAY_WINDOWS = [
 const dataLayer = new DataLayer();
 let overlayWindows: BrowserWindow[] = [];
 let editMode = false;
+// Muss am Leben gehalten werden - ein garbage-collectes Tray-Objekt laesst
+// das Icon kommentarlos aus der Taskleiste verschwinden.
+let tray: Tray | null = null;
 
 function toggleEditMode(): void {
   editMode = !editMode;
@@ -37,6 +41,8 @@ app.whenReady().then(async () => {
     console.error(`[main] Hotkey ${EDIT_MODE_HOTKEY} konnte nicht registriert werden`);
   }
 
+  tray = createTray({ onToggleEditMode: toggleEditMode, isEditMode: () => editMode });
+
   // --demo laesst die App ohne laufendes iRacing testen, z.B. via
   // `npm run dev -- --demo` im electron-vite-Entwicklungsmodus.
   const demo = process.argv.includes('--demo');
@@ -44,11 +50,13 @@ app.whenReady().then(async () => {
   console.log(`[main] Datenlayer auf ws://${DATA_HOST}:${DATA_PORT}${demo ? ' (Demo-Modus)' : ''}`);
 });
 
-app.on('window-all-closed', () => {
-  app.quit();
-});
+// Bewusst KEIN app.quit() bei window-all-closed: die Overlays haben weder
+// Rahmen noch Schliessen-Button, die App soll ausschliesslich ueber den
+// Tray ("Beenden") oder Strg+C im Terminal enden - alles andere waere
+// ueberraschend fuer eine Tray-App.
 
 app.on('will-quit', async () => {
   globalShortcut.unregisterAll();
+  tray?.destroy();
   await dataLayer.stop();
 });
