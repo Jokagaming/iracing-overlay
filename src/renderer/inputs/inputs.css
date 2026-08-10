@@ -1,0 +1,49 @@
+@import "../shared/overlay.css";
+
+.inputs {
+  min-width: 280px;
+}
+
+.widget__header span:last-child {
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.inputs__body {
+  padding: 6px 8px 8px;
+}
+
+#graph {
+  display: block;
+  width: 100%;
+  /* Feste CSS-Hoehe, das Canvas-Backing wird in JS per devicePixelRatio
+     nachgezogen (siehe main.ts) - sonst wirkt der Graph auf hochaufloesenden
+     Monitoren unscharf. */
+  height: 90px;
+}
+
+.inputs__rpm-bar {
+  margin-top: 6px;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.inputs__rpm-fill {
+  height: 100%;
+  width: 0%;
+  transition: width 60ms linear;
+}
+
+.inputs__rpm-fill--ok {
+  background: var(--good);
+}
+
+.inputs__rpm-fill--shift {
+  background: var(--warn);
+}
+
+.inputs__rpm-fill--blink {
+  background: var(--pit);
+}

@@ -7,8 +7,8 @@
  * node_modules/@irsdk-node/types/dist/types/defines.d.ts.
  */
 
-import { GlobalFlags, SessionState as SdkSessionStateEnum, TrackLocation as SdkTrackLocation } from '@irsdk-node/types';
-import type { SdkSessionState, TrackLocation } from '../types.js';
+import { CarLeftRight as SdkCarLeftRight, GlobalFlags, SessionState as SdkSessionStateEnum, TrackLocation as SdkTrackLocation } from '@irsdk-node/types';
+import type { CarLeftRight, SdkSessionState, TrackLocation } from '../types.js';
 
 const FLAG_BITS: Array<[string, number]> = Object.entries(GlobalFlags)
   .filter((entry): entry is [string, number] => typeof entry[1] === 'number')
@@ -62,4 +62,20 @@ export function decodeSessionState(value: number | null | undefined): SdkSession
 export function toCssColor(value: number | null | undefined): string | null {
   if (value == null) return null;
   return `#${(value & 0xffffff).toString(16).padStart(6, '0')}`;
+}
+
+const CAR_LEFT_RIGHT: Record<number, CarLeftRight> = {
+  [SdkCarLeftRight.Off]: 'off',
+  [SdkCarLeftRight.Clear]: 'clear',
+  [SdkCarLeftRight.CarLeft]: 'car_left',
+  [SdkCarLeftRight.CarRight]: 'car_right',
+  [SdkCarLeftRight.CarLeftRight]: 'cars_left_right',
+  [SdkCarLeftRight.Cars2Left]: 'cars_2_left',
+  [SdkCarLeftRight.Cars2Right]: 'cars_2_right',
+};
+
+/** Direktes SDK-Signal fuer Autos neben dem Spieler - siehe types.ts, CarLeftRight. */
+export function decodeCarLeftRight(value: number | null | undefined): CarLeftRight {
+  if (value == null) return 'off';
+  return CAR_LEFT_RIGHT[value] ?? 'off';
 }

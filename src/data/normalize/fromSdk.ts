@@ -14,6 +14,7 @@ import type {
   CarClass,
   Driver,
   DriverRosterEntry,
+  PlayerCarInfo,
   PlayerState,
   SessionSegment,
   SessionState,
@@ -21,7 +22,7 @@ import type {
   TrackInfo,
   WeatherState,
 } from '../types.js';
-import { decodeFlags, decodeSessionState, decodeTrackLocation, toCssColor } from './enums.js';
+import { decodeCarLeftRight, decodeFlags, decodeSessionState, decodeTrackLocation, toCssColor } from './enums.js';
 
 // --- Hilfsfunktionen zum Auspacken von TelemetryVariable -------------------
 
@@ -113,6 +114,15 @@ function buildCarClasses(sdk: IRacingSDK, roster: DriverRosterEntry[]): CarClass
   return [...classes.values()].sort((a, b) => b.relSpeed - a.relSpeed);
 }
 
+function buildPlayerCar(driverInfo: ReturnType<IRacingSDK['getDriverInfo']>): PlayerCarInfo {
+  return {
+    idleRpm: driverInfo?.DriverCarIdleRPM ?? 0,
+    redLineRpm: driverInfo?.DriverCarRedLine ?? 0,
+    shiftLightShiftRpm: driverInfo?.DriverCarSLShiftRPM ?? 0,
+    shiftLightBlinkRpm: driverInfo?.DriverCarSLBlinkRPM ?? 0,
+  };
+}
+
 export function buildSessionState(sdk: IRacingSDK, updateId: number): SessionState {
   const driverInfo = sdk.getDriverInfo();
   const roster = buildRoster(sdk);
@@ -126,6 +136,7 @@ export function buildSessionState(sdk: IRacingSDK, updateId: number): SessionSta
     playerCarIdx: driverInfo?.DriverCarIdx ?? -1,
     paceCarIdx: driverInfo?.PaceCarIdx ?? null,
     estLapTimeSec: driverInfo?.DriverCarEstLapTime || 90,
+    playerCar: buildPlayerCar(driverInfo),
   };
 }
 
@@ -181,6 +192,7 @@ function buildPlayer(t: TelemetryVarList, playerCarIdx: number): PlayerState {
       toSessionBestLapSec: scalarNum(t.LapDeltaToSessionBestLap) || null,
     },
     tires: buildTires(t),
+    carLeftRight: decodeCarLeftRight(scalarNum(t.CarLeftRight)),
   };
 }
 

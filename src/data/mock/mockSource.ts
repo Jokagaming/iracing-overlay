@@ -7,7 +7,7 @@
  * des `--demo`-Modus aus dem archivierten Python-Prototyp.
  */
 
-import type { BridgeMessage, Driver, DriverRosterEntry, SessionState, TelemetryFrame } from '../types.js';
+import type { BridgeMessage, CarLeftRight, Driver, DriverRosterEntry, SessionState, TelemetryFrame } from '../types.js';
 import type { DataSource } from '../connector.js';
 import { FuelTracker } from '../calc/fuel.js';
 
@@ -141,6 +141,7 @@ export class MockSource implements DataSource {
       playerCarIdx: PLAYER_IDX,
       paceCarIdx: null,
       estLapTimeSec: LAP_TIME_BASE,
+      playerCar: { idleRpm: 1200, redLineRpm: 7800, shiftLightShiftRpm: 7400, shiftLightBlinkRpm: 7700 },
     };
   }
 
@@ -218,6 +219,7 @@ export class MockSource implements DataSource {
     const fuelLevelLiters = Math.max(0, 78 - playerProgress * 2.9);
     this.fuelTracker.update(playerLap, fuelLevelLiters, false);
     const usePerLapLiters = this.fuelTracker.averagePerLapLiters;
+    const carLeftRight = this.simulateCarLeftRight(progress);
 
     return {
       seq: this.seq,
@@ -252,8 +254,35 @@ export class MockSource implements DataSource {
           lr: { tempInnerC: 88, tempMiddleC: 85, tempOuterC: 81, wearPct: Math.max(0, 1 - playerProgress * 0.0035), coldPressureKpa: 165 },
           rr: { tempInnerC: 91, tempMiddleC: 88, tempOuterC: 84, wearPct: Math.max(0, 1 - playerProgress * 0.0035), coldPressureKpa: 165 },
         },
+        carLeftRight,
       },
       weather: { airTempC: 24, trackTempC: 34.5, humidityPct: 0.45, trackWetness: 'dry' },
     };
+  }
+
+  /**
+   * Nur fuer die Demo: laengsseitige Naehe (aus dem ohnehin vorhandenen
+   * Fortschritts-Fenster) als grobe Annaeherung an "irgendwer koennte gerade
+   * daneben sein". Im echten Connector kommt CarLeftRight direkt vom SDK -
+   * dort wird nichts geschaetzt (siehe types.ts, CarLeftRight-Kommentar).
+   */
+  private simulateCarLeftRight(progress: Map<number, number>): CarLeftRight {
+    const playerProgress = progress.get(PLAYER_IDX)!;
+    let nearestAheadSec = Infinity;
+    let nearestBehindSec = Infinity;
+
+    for (const car of this.cars) {
+      if (car.idx === PLAYER_IDX) continue;
+      const diffSec = (progress.get(car.idx)! - playerProgress) * car.lapTime;
+      if (diffSec > 0) nearestAheadSec = Math.min(nearestAheadSec, diffSec);
+      else nearestBehindSec = Math.min(nearestBehindSec, -diffSec);
+    }
+
+    const right = nearestAheadSec < 1;
+    const left = nearestBehindSec < 1;
+    if (left && right) return 'cars_left_right';
+    if (left) return 'car_left';
+    if (right) return 'car_right';
+    return 'clear';
   }
 }

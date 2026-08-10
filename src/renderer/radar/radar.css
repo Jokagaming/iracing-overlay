@@ -1,0 +1,79 @@
+@import "../shared/overlay.css";
+
+.radar {
+  min-width: 130px;
+}
+
+.radar__body {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  height: calc(100% - 24px);
+  box-sizing: border-box;
+}
+
+/*
+ * Links/Rechts-Balken zeigen ausschliesslich das direkt vom SDK gelieferte
+ * CarLeftRight-Signal - keine geschaetzte Seitenposition (siehe
+ * types.ts, CarLeftRight-Kommentar). Bewusst prominent und ohne
+ * Uebergangsanimation, damit eine echte Gefahrensituation nicht durch eine
+ * Fade-Verzoegerung spaeter auffaellt als sie eintritt.
+ */
+.radar__side {
+  width: 22px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.radar__side--warn {
+  background: var(--pit);
+  color: var(--text-strong);
+}
+
+.radar__track {
+  position: relative;
+  flex: 1;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+/* Mittige Linie als Referenz - alles darueber ist voraus, darunter dahinter. */
+.radar__track::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.radar__player {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 3px;
+  background: var(--player);
+  box-shadow: 0 0 6px rgba(255, 214, 64, 0.6);
+}
+
+.radar__dot {
+  position: absolute;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: var(--dot-color, #fff);
+  border: 1px solid rgba(0, 0, 0, 0.35);
+}

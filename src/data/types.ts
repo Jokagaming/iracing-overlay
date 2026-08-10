@@ -96,6 +96,15 @@ export interface DriverRosterEntry {
   licenseColor: string | null;
 }
 
+export interface PlayerCarInfo {
+  idleRpm: number;
+  redLineRpm: number;
+  /** `DriverCarSLShiftRPM` - ab hier faerbt sich das Schaltlicht gelb. */
+  shiftLightShiftRpm: number;
+  /** `DriverCarSLBlinkRPM` - ab hier blinkt/rot, jetzt schalten. */
+  shiftLightBlinkRpm: number;
+}
+
 export interface SessionState {
   updateId: number;
   track: TrackInfo;
@@ -106,6 +115,7 @@ export interface SessionState {
   paceCarIdx: number | null;
   /** `DriverCarEstLapTime` - Basis fuer die Relative-Gap-Berechnung. */
   estLapTimeSec: number;
+  playerCar: PlayerCarInfo;
 }
 
 export interface FuelState {
@@ -132,6 +142,24 @@ export interface TireState {
   coldPressureKpa: number;
 }
 
+/**
+ * `CarLeftRight` - direkt vom SDK berechnetes Naehe-Signal, kein
+ * per-Auto-Array. Das ist die einzige vom SDK selbst gelieferte
+ * Seitenposition-Information; es gibt keine Telemetrie, aus der sich die
+ * tatsaechliche Spur eines fremden Autos neben einem herleiten liesse -
+ * der Radar (siehe renderer/radar/) baut deshalb bewusst NICHT auf
+ * geschaetzten Seitenpositionen anderer Autos auf, sondern kombiniert
+ * dieses Feld mit dem laengsseitigen Abstand aus calc/relative.ts.
+ */
+export type CarLeftRight =
+  | 'off'
+  | 'clear'
+  | 'car_left'
+  | 'car_right'
+  | 'cars_left_right'
+  | 'cars_2_left'
+  | 'cars_2_right';
+
 export interface PlayerState {
   carIdx: number;
   speedMs: number;
@@ -141,6 +169,7 @@ export interface PlayerState {
   fuel: FuelState;
   delta: DeltaState;
   tires: Record<'lf' | 'rf' | 'lr' | 'rr', TireState>;
+  carLeftRight: CarLeftRight;
 }
 
 export interface WeatherState {

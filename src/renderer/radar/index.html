@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>Radar</title>
+    <link rel="stylesheet" href="radar.css" />
+  </head>
+  <body>
+    <div class="widget radar" id="widget">
+      <div class="widget__header">
+        <span>Radar</span>
+      </div>
+      <div class="widget__status" id="status">Verbinde mit der Bridge ...</div>
+      <div class="radar__body is-hidden" id="body">
+        <div class="radar__side radar__side--left" id="side-left">L</div>
+        <div class="radar__track" id="track">
+          <div class="radar__player"></div>
+        </div>
+        <div class="radar__side radar__side--right" id="side-right">R</div>
+      </div>
+      <div class="widget__resize-grip" id="resize-grip"></div>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

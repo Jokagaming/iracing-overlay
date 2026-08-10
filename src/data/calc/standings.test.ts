@@ -51,6 +51,7 @@ function makeFrame(drivers: Driver[]): TelemetryFrame {
         lr: { tempInnerC: 0, tempMiddleC: 0, tempOuterC: 0, wearPct: 0, coldPressureKpa: 0 },
         rr: { tempInnerC: 0, tempMiddleC: 0, tempOuterC: 0, wearPct: 0, coldPressureKpa: 0 },
       },
+      carLeftRight: 'clear',
     },
     weather: { airTempC: 20, trackTempC: 30, humidityPct: 0.5, trackWetness: 'dry' },
   };

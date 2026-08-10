@@ -6,6 +6,8 @@ const rendererEntries = {
   relative: resolve(__dirname, 'src/renderer/relative/index.html'),
   fuel: resolve(__dirname, 'src/renderer/fuel/index.html'),
   standings: resolve(__dirname, 'src/renderer/standings/index.html'),
+  inputs: resolve(__dirname, 'src/renderer/inputs/index.html'),
+  radar: resolve(__dirname, 'src/renderer/radar/index.html'),
 };
 
 export default defineConfig({

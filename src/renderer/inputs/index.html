@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>Inputs</title>
+    <link rel="stylesheet" href="inputs.css" />
+  </head>
+  <body>
+    <div class="widget inputs" id="widget">
+      <div class="widget__header">
+        <span>Inputs</span>
+        <span id="gear-rpm"></span>
+      </div>
+      <div class="widget__status" id="status">Verbinde mit der Bridge ...</div>
+      <div class="inputs__body is-hidden" id="body">
+        <canvas id="graph"></canvas>
+        <div class="inputs__rpm-bar">
+          <div class="inputs__rpm-fill inputs__rpm-fill--ok" id="rpm-fill"></div>
+        </div>
+      </div>
+      <div class="widget__resize-grip" id="resize-grip"></div>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

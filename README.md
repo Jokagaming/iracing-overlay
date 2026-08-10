@@ -34,9 +34,9 @@ npm run dev
 ```
 
 Startet Electron im Dev-Modus mit Hot-Reload, verbindet sich mit einer
-laufenden iRacing-Instanz und zeigt drei Overlays (Relative, Standings,
-Fuel): transparent, always-on-top, standardmaessig klickdurchlaessig.
-`Strg+Alt+E` schaltet
+laufenden iRacing-Instanz und zeigt fuenf Overlays (Relative, Standings,
+Fuel, Inputs, Radar): transparent, always-on-top, standardmaessig
+klickdurchlaessig. `Strg+Alt+E` schaltet
 einen Edit-Modus um (gelber Rahmen). Im Edit-Modus laesst sich jedes
 Fenster einzeln per Ziehen verschieben (auch auf einen anderen Monitor -
 das *ist* die Monitor-Auswahl, es gibt dafuer kein eigenes Dropdown) und
@@ -64,7 +64,7 @@ Aufrufer ist ein anderer, siehe `src/main/dataLayer.ts`.
 | 2 | Erstes echtes Overlay (Relative) in Electron eingebunden | **fertig, verifiziert** (Datenlayer laeuft im Main-Process, Relative-Fenster zeigt korrekt sortierte Zeilen, Edit-Modus-Hotkey funktioniert am echten Overlay) |
 | 3 | Edit-Modus wird nutzbar (Verschieben, Groesse aendern), Layout-Persistenz, Monitor-Auswahl | **teilweise fertig, verifiziert** - Auto-Switch nach Auto/Serie/Session-Typ fehlt noch, siehe unten |
 | 4 | Standings + Fuel-Rechner | **fertig, verifiziert per Demo-Modus** - SQLite-Rundenzeiten bewusst zurueckgestellt (kein Verbraucher dafuer), siehe unten |
-| 5 | Input-Telemetrie-Graph + Radar | offen |
+| 5 | Input-Telemetrie-Graph + Radar | **fertig, verifiziert per Demo-Modus** - Radar zeigt bewusst keine geschaetzten Seitenpositionen anderer Autos, siehe unten |
 | 6 | Track Map, Delta-Bar/Timer/Weather/Flags | offen |
 | 7 | Packaging (`electron-builder`), Tray, Start-/CPU-Budget | offen |
 
@@ -84,6 +84,8 @@ src/
                  relative/         Autos vor/hinter dem Spieler (Meilenstein 2)
                  standings/        Session-Wertung nach Klasse (Meilenstein 4)
                  fuel/             Verbrauch, Restrunden, Nachtankmenge (Meilenstein 4)
+                 inputs/           Gas/Bremse/Lenkung als Graph, Gang+Drehzahl (Meilenstein 5)
+                 radar/            Naehe-Warnung + Autos in der Umgebung (Meilenstein 5)
   data/        Datenlayer, eigenstaendig lauffaehig ohne Electron:
                  types.ts        normalisiertes Modell
                  calc/            reine Funktionen (Relative-Gap, Fuel-Planung, Standings), getestet
@@ -111,6 +113,22 @@ npx vitest run
 
 Testet die reinen Berechnungsfunktionen (`src/data/calc/`): Relative-Gap,
 Fuel-Tracking/-Planung, Standings-Gruppierung.
+
+## Radar: bewusste Design-Entscheidung
+
+Das SDK liefert keine Telemetrie, aus der sich die tatsaechliche Fahrspur
+eines fremden Autos herleiten liesse - nur `CarLeftRight`, ein einzelnes
+vom SDK selbst berechnetes Signal fuers eigene Auto ("frei" / "Auto links"
+/ "Auto rechts" / "Autos beidseitig" / ...). Ein Radar mit erfundenen
+Seitenpositionen anderer Autos waere irrefuehrend. Der Radar kombiniert
+deshalb bewusst nur echte Daten: `CarLeftRight` als Warnbalken links/rechts,
+plus den laengsseitigen Abstand aus `calc/relative.ts` (bereits getestet)
+fuer die Punkte oberhalb/unterhalb des Spielers.
+
+Die Lenkwinkel-Linie im Inputs-Graph ist aus demselben Grund eine
+Naeherung: `SteeringWheelAngle` kommt ohne das tatsaechliche Maximum des
+jeweiligen Fahrzeugs/Lenkrads, `inputs/main.ts` nimmt einen festen,
+plausiblen Bereich (±3.5 rad) an statt einen exakten Wert vorzutaeuschen.
 
 ## Bekannte offene Punkte
 
