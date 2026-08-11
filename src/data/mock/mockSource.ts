@@ -10,6 +10,7 @@
 import type { BridgeMessage, CarLeftRight, Driver, DriverRosterEntry, SessionState, TelemetryFrame } from '../types.js';
 import type { DataSource } from '../connector.js';
 import { FuelTracker } from '../calc/fuel.js';
+import { LapTimeTracker } from '../calc/laptimes.js';
 
 const TRACK_LENGTH_M = 5793;
 const LAP_TIME_BASE = 103.5;
@@ -19,9 +20,9 @@ const RACE_DURATION_SEC = 3600;
 const UNLIMITED_LAPS_SENTINEL = 32767;
 
 const CLASSES = [
-  { id: 4011, name: 'GTP', color: '#ff5b3a', relSpeed: 100, lapTime: 96 },
-  { id: 2708, name: 'GT3', color: '#3ad1ff', relSpeed: 80, lapTime: 103.5 },
-  { id: 3200, name: 'GT4', color: '#9dff3a', relSpeed: 60, lapTime: 112 },
+  { id: 4011, name: 'GTP', color: '#ff5b3a', relSpeed: 100, lapTime: 96, cars: ['Cadillac V-Series.R', 'Porsche 963', 'Acura ARX-06'] },
+  { id: 2708, name: 'GT3', color: '#3ad1ff', relSpeed: 80, lapTime: 103.5, cars: ['Mercedes-AMG GT3', 'BMW M4 GT3', 'Ferrari 296 GT3', 'Ford Mustang GT3'] },
+  { id: 3200, name: 'GT4', color: '#9dff3a', relSpeed: 60, lapTime: 112, cars: ['Porsche 718 Cayman GT4', 'Aston Martin Vantage GT4', 'McLaren 570S GT4'] },
 ];
 
 const NAMES = [
@@ -38,6 +39,7 @@ interface MockCar {
   offset: number;
   name: string;
   number: string;
+  carName: string;
   iRating: number;
 }
 
@@ -58,6 +60,7 @@ export class MockSource implements DataSource {
   private readonly sessionMessage: BridgeMessage & { type: 'session' };
   private readonly startedAt = performance.now();
   private readonly fuelTracker = new FuelTracker();
+  private readonly lapTimeTracker = new LapTimeTracker();
   private seq = 0;
   private sessionSent = false;
 
@@ -76,6 +79,7 @@ export class MockSource implements DataSource {
         offset: idx * 0.011,
         name: NAMES[idx]!,
         number: String(1 + Math.floor(rng() * 98)),
+        carName: carClass.cars[idx % carClass.cars.length]!,
         iRating: 1200 + Math.floor(rng() * 6600),
       };
     });
@@ -113,6 +117,7 @@ export class MockSource implements DataSource {
       userName: car.name,
       carNumber: car.number,
       carClassId: car.carClass.id,
+      carName: car.carName,
       iRating: car.iRating,
       safetyRating: 'A 3.45',
       licenseColor: '#0153db',
@@ -185,6 +190,7 @@ export class MockSource implements DataSource {
         userName: car.name,
         carNumber: car.number,
         carClassId: car.carClass.id,
+        carName: car.carName,
         iRating: car.iRating,
         safetyRating: 'A 3.45',
         licenseColor: '#0153db',
@@ -195,11 +201,17 @@ export class MockSource implements DataSource {
         estTimeSec: lapDistPct * car.lapTime,
         onPitRoad: false,
         trackSurface: 'on_track',
-        lastLapSec: lap > 1 ? car.lapTime : null,
+        // Leichte, deterministische Schwankung pro Runde statt einer
+        // platten Konstante - realistischer fuer alles, was mehrere
+        // Runden nebeneinander zeigt (Standings, Laptimes-Diagramm).
+        lastLapSec: lap > 1 ? car.lapTime * (0.985 + 0.03 * Math.sin(car.idx * 7 + lap * 3)) : null,
         bestLapSec: lap > 1 ? car.lapTime * 0.99 : null,
         gapToLeaderSec,
       };
     });
+
+    const playerDriver = drivers.find((d) => d.carIdx === PLAYER_IDX)!;
+    this.lapTimeTracker.update(playerDriver.lap, playerDriver.lastLapSec);
 
     const playerProgress = progress.get(PLAYER_IDX)!;
     // Wegen car.offset ist playerProgress kurz nach dem Start negativ. Ohne
@@ -255,6 +267,7 @@ export class MockSource implements DataSource {
           rr: { tempInnerC: 91, tempMiddleC: 88, tempOuterC: 84, wearPct: Math.max(0, 1 - playerProgress * 0.0035), coldPressureKpa: 165 },
         },
         carLeftRight,
+        lastLapTimesSec: this.lapTimeTracker.lastLaps,
       },
       weather: { airTempC: 24, trackTempC: 34.5, humidityPct: 0.45, trackWetness: 'dry' },
     };

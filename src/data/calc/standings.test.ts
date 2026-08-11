@@ -11,6 +11,7 @@ function makeDriver(overrides: Partial<Driver> & { carIdx: number }): Driver {
     userName: `Fahrer ${overrides.carIdx}`,
     carNumber: String(overrides.carIdx),
     carClassId: 1,
+    carName: 'Testwagen',
     iRating: 3000,
     safetyRating: 'A 3.45',
     licenseColor: '#0153db',
@@ -52,6 +53,7 @@ function makeFrame(drivers: Driver[]): TelemetryFrame {
         rr: { tempInnerC: 0, tempMiddleC: 0, tempOuterC: 0, wearPct: 0, coldPressureKpa: 0 },
       },
       carLeftRight: 'clear',
+      lastLapTimesSec: [],
     },
     weather: { airTempC: 20, trackTempC: 30, humidityPct: 0.5, trackWetness: 'dry' },
   };

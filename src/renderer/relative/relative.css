@@ -1,7 +1,7 @@
 @import "../shared/overlay.css";
 
 .relative {
-  min-width: 300px;
+  min-width: 380px;
 }
 
 .relative__session {
@@ -60,6 +60,14 @@
   width: 30px;
   text-align: right;
   font-weight: 600;
+  color: var(--text-dim);
+}
+
+.relative__car {
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
   color: var(--text-dim);
 }
 

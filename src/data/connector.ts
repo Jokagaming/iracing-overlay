@@ -14,6 +14,7 @@ import { IRacingSDK } from 'irsdk-node';
 import type { BridgeMessage, DriverRosterEntry } from './types.js';
 import { buildSessionState, buildTelemetryFrame } from './normalize/fromSdk.js';
 import { FuelTracker } from './calc/fuel.js';
+import { LapTimeTracker } from './calc/laptimes.js';
 
 const POLL_TIMEOUT_MS = Math.floor((1 / 60) * 1000); // ~16ms, siehe irsdk-node README
 const RECONNECT_DELAY_MS = 1000;
@@ -35,6 +36,7 @@ export class IRacingConnector implements DataSource {
   private connected = false;
   private lastConnectAttempt = 0;
   private fuelTracker = new FuelTracker();
+  private lapTimeTracker = new LapTimeTracker();
 
   get lastSessionMessage(): BridgeMessage | null {
     return this.sessionMessage;
@@ -63,6 +65,7 @@ export class IRacingConnector implements DataSource {
     this.seq += 1;
     const frame = buildTelemetryFrame(this.sdk, this.seq, this.roster, this.playerCarIdx);
     this.enrichFuel(frame);
+    this.enrichLapTimes(frame);
     messages.push({ type: 'telemetry', ...frame });
     return messages;
   }
@@ -79,6 +82,13 @@ export class IRacingConnector implements DataSource {
     frame.player.fuel.lapsRemainingOnFuel = this.fuelTracker.averagePerLapLiters
       ? frame.player.fuel.levelLiters / this.fuelTracker.averagePerLapLiters
       : null;
+  }
+
+  /** Wie enrichFuel() oben - Historie braucht Zustand ueber mehrere Ticks, siehe calc/laptimes.ts. */
+  private enrichLapTimes(frame: ReturnType<typeof buildTelemetryFrame>): void {
+    const me = frame.drivers.find((d) => d.carIdx === frame.player.carIdx);
+    this.lapTimeTracker.update(me?.lap ?? 0, me?.lastLapSec ?? null);
+    frame.player.lastLapTimesSec = this.lapTimeTracker.lastLaps;
   }
 
   private async tryConnect(): Promise<BridgeMessage[]> {
@@ -116,8 +126,9 @@ export class IRacingConnector implements DataSource {
     this.roster = session.drivers;
     this.playerCarIdx = session.playerCarIdx;
     // Neue Session (anderes Auto, neuer Boxenstopp-Kontext, Neustart) -
-    // alte Verbrauchshistorie ist nicht mehr aussagekraeftig.
+    // alte Verbrauchs-/Rundenzeiten-Historie ist nicht mehr aussagekraeftig.
     this.fuelTracker = new FuelTracker();
+    this.lapTimeTracker = new LapTimeTracker();
     const message: BridgeMessage = { type: 'session', ...session };
     this.sessionMessage = message;
     return message;

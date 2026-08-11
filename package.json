@@ -1,6 +1,6 @@
 {
   "name": "iracing-overlay",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Windows-Overlay-Suite fuer iRacing-Telemetrie",
   "scripts": {
     "test": "vitest run",
@@ -34,6 +34,7 @@
   },
   "main": "out/main/index.js",
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "irsdk-node": "^4.4.0",
     "ws": "^8.21.3"
   }

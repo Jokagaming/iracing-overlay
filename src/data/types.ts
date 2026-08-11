@@ -26,6 +26,12 @@ export interface Driver {
   userName: string;
   carNumber: string;
   carClassId: number | null;
+  /**
+   * `CarScreenNameShort` - das SDK liefert keine eigene Marke/Hersteller-
+   * Feld, das ist die naechstliegende verfuegbare Kurzbezeichnung des
+   * Fahrzeugs (z.B. "MX-5 Cup", "Mustang GT3").
+   */
+  carName: string;
 
   iRating: number | null;
   // Format z.B. "A 3.45" - UNSICHER: noch nicht gegen echte Lizenzstufen
@@ -91,6 +97,7 @@ export interface DriverRosterEntry {
   userName: string;
   carNumber: string;
   carClassId: number | null;
+  carName: string;
   iRating: number | null;
   safetyRating: string | null;
   licenseColor: string | null;
@@ -170,6 +177,13 @@ export interface PlayerState {
   delta: DeltaState;
   tires: Record<'lf' | 'rf' | 'lr' | 'rr', TireState>;
   carLeftRight: CarLeftRight;
+  /**
+   * Die letzten abgeschlossenen Rundenzeiten des Spielers, chronologisch
+   * (aelteste zuerst), bis zu 5 Stueck - siehe calc/laptimes.ts. Wie
+   * `fuel.usePerLapLiters` erst nach `buildTelemetryFrame()` befuellt, weil
+   * das Zustand ueber mehrere Ticks braucht.
+   */
+  lastLapTimesSec: number[];
 }
 
 // UNSICHER: Enum-Werte nur fuer Rain-faehige Inhalte belastbar, sonst

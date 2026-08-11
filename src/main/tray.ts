@@ -12,6 +12,8 @@ import { resourcePath } from './resources.js';
 export interface TrayOptions {
   onToggleEditMode: () => void;
   isEditMode: () => boolean;
+  onOpenLauncher: () => void;
+  onCheckForUpdates: () => void;
 }
 
 export function createTray(options: TrayOptions): Tray {
@@ -21,6 +23,8 @@ export function createTray(options: TrayOptions): Tray {
   const rebuildMenu = (): void => {
     tray.setContextMenu(
       Menu.buildFromTemplate([
+        { label: 'Overlays auswaehlen...', click: options.onOpenLauncher },
+        { type: 'separator' },
         {
           label: 'Edit-Modus',
           type: 'checkbox',
@@ -28,6 +32,8 @@ export function createTray(options: TrayOptions): Tray {
           accelerator: 'Ctrl+Alt+E',
           click: options.onToggleEditMode,
         },
+        { type: 'separator' },
+        { label: 'Nach Updates suchen', click: options.onCheckForUpdates },
         { type: 'separator' },
         { label: 'Beenden', click: () => app.quit() },
       ]),

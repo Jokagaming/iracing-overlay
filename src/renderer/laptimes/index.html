@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>Laptimes</title>
+    <link rel="stylesheet" href="laptimes.css" />
+  </head>
+  <body>
+    <div class="widget laptimes" id="widget">
+      <div class="widget__header">
+        <span>Laptimes</span>
+        <span id="best"></span>
+      </div>
+      <div class="widget__status" id="status">Verbinde mit der Bridge ...</div>
+      <div class="laptimes__body is-hidden" id="body">
+        <div class="laptimes__chart" id="chart"></div>
+      </div>
+      <div class="widget__resize-grip" id="resize-grip"></div>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

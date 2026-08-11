@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>iRacing Overlay</title>
+    <link rel="stylesheet" href="launcher.css" />
+  </head>
+  <body>
+    <div class="launcher">
+      <h1>Overlays auswaehlen</h1>
+      <p class="launcher__hint">Haken setzen, was angezeigt werden soll, dann auf Start klicken.</p>
+      <ul class="launcher__list" id="list"></ul>
+      <div class="launcher__actions">
+        <button class="launcher__link" id="select-all" type="button">Alle</button>
+        <button class="launcher__link" id="select-none" type="button">Keine</button>
+      </div>
+      <button class="launcher__start" id="start" type="button">Start</button>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

@@ -33,17 +33,24 @@ npm install
 npm run dev
 ```
 
-Startet Electron im Dev-Modus mit Hot-Reload, verbindet sich mit einer
-laufenden iRacing-Instanz und zeigt neun Overlays (Relative, Standings,
-Fuel, Inputs, Radar, Delta, Session-Timer, Weather, Flags): transparent,
-always-on-top, standardmaessig klickdurchlaessig. `Strg+Alt+E` schaltet
-einen Edit-Modus um (gelber Rahmen). Im Edit-Modus laesst sich jedes
-Fenster einzeln per Ziehen verschieben (auch auf einen anderen Monitor -
-das *ist* die Monitor-Auswahl, es gibt dafuer kein eigenes Dropdown) und
-per Eck-Griff unten rechts in der Groesse aendern. Beides wird automatisch
-gespeichert (`%APPDATA%/iracing-overlay/layouts/default.json`) und beim
-naechsten Start wiederhergestellt - haengt der gespeicherte Monitor nicht
-mehr dran, faellt die Position auf den Standardwert zurueck.
+Startet Electron im Dev-Modus mit Hot-Reload und verbindet sich mit einer
+laufenden iRacing-Instanz. Zuerst erscheint ein Auswahl-Fenster mit
+Checkboxen fuer die zehn Overlays (Relative, Standings, Fuel, Inputs,
+Radar, Delta, Laptimes, Session-Timer, Weather, Flags) - erst ein Klick auf "Start"
+oeffnet die angehakten Fenster: transparent, always-on-top, standardmaessig
+klickdurchlaessig. Die Auswahl wird gespeichert
+(`%APPDATA%/iracing-overlay/layouts/selection.json`) und beim naechsten
+Start vorausgewaehlt; beim allerersten Start sind alle neun angehakt. Ueber
+den Tray-Eintrag "Overlays auswaehlen..." laesst sich das Fenster jederzeit
+erneut oeffnen, um einzelne Overlays nachtraeglich an- oder abzuschalten,
+ohne die App neu zu starten. `Strg+Alt+E` schaltet einen Edit-Modus um
+(gelber Rahmen). Im Edit-Modus laesst sich jedes Fenster einzeln per Ziehen
+verschieben (auch auf einen anderen Monitor - das *ist* die
+Monitor-Auswahl, es gibt dafuer kein eigenes Dropdown) und per Eck-Griff
+unten rechts in der Groesse aendern. Beides wird automatisch gespeichert
+(`%APPDATA%/iracing-overlay/layouts/default.json`) und beim naechsten Start
+wiederhergestellt - haengt der gespeicherte Monitor nicht mehr dran, faellt
+die Position auf den Standardwert zurueck.
 
 Ohne laufendes iRacing testen:
 
@@ -56,10 +63,57 @@ separater Prozess wie `src/data/cli.ts`) - der Code ist identisch, nur der
 Aufrufer ist ein anderer, siehe `src/main/dataLayer.ts`.
 
 Da alle Overlay-Fenster rahmenlos sind und keinen Schliessen-Button haben,
-ist der **System-Tray** (gelber Punkt) die einzige Stelle, um die App zu
-steuern: Klick oeffnet ein Menue mit "Edit-Modus" (derselbe Toggle wie
-`Strg+Alt+E`) und "Beenden". Ohne den Tray liesse sich die App nur ueber
-den Task-Manager beenden.
+ist der **System-Tray** (gelber Punkt) die einzige Stelle, um die App
+danach noch zu steuern: Klick oeffnet ein Menue mit "Overlays
+auswaehlen..." (oeffnet erneut das Auswahl-Fenster), "Edit-Modus"
+(derselbe Toggle wie `Strg+Alt+E`), "Nach Updates suchen" (siehe
+"Auto-Update" unten) und "Beenden". Ohne den Tray liesse sich die App nur
+ueber den Task-Manager beenden.
+
+## Auto-Update
+
+Ein installierter Client prueft automatisch gegen die GitHub Releases
+dieses Repos (`electron-updater`) - einmal beim Start, danach alle 4
+Stunden, zusaetzlich manuell ueber "Nach Updates suchen" im Tray. Ist ein
+Update fertig heruntergeladen, fragt ein natives Dialogfenster, ob jetzt
+neu gestartet werden soll; bei "Spaeter" installiert es sich automatisch
+beim naechsten Beenden der App. Aktiv nur im gepackten Build - im
+Dev-Modus (`npm run dev`) gibt es kein `app-update.yml` und keinen Grund,
+gegen echte Releases zu pruefen.
+
+**Release veroeffentlichen (automatisch, empfohlen):**
+
+`.github/workflows/release.yml` baut bei jedem Push eines `v*`-Tags den
+Installer auf einem echten Windows-Runner (kein Cross-Build - der native
+`@irsdk-node`-Rebuild braucht Windows-Build-Tools) und laedt ihn direkt als
+GitHub Release hoch:
+
+```
+npm version minor        # oder patch/major - setzt package.json UND den git-Tag
+git push && git push --tags
+```
+
+Danach hat die GitHub-Releases-Seite dieses Repos automatisch die neue
+`.exe` (inkl. `latest.yml` fuer `electron-updater`) - ein Kollege muss nur
+noch diese eine Datei herunterladen und ausfuehren, keine Dev-Tools noetig.
+Fortschritt/Ergebnis unter "Actions" im Repo einsehbar.
+
+**Release veroeffentlichen (manuell, z.B. lokal zum Testen):**
+
+```
+npm run icons
+npx electron-vite build
+GH_TOKEN=<token mit repo-Rechten> npx electron-builder --win --publish always
+```
+
+Ohne `--publish` und `GH_TOKEN` passiert beim `package`-Skript weiterhin
+nichts dergleichen, ein lokales `npm run package` bleibt rein lokal.
+`GH_TOKEN` braucht Schreibrechte auf Releases dieses Repos (z.B. ein
+Fine-grained PAT mit "Contents: Read and write").
+
+Unsignierte Installer loesen bei jedem Download/Update weiterhin die
+Windows-SmartScreen-Warnung aus - ohne Code-Signing-Zertifikat laesst sich
+das nicht vermeiden, betrifft Erstinstallation wie Auto-Update gleichermassen.
 
 ## Installer bauen
 
@@ -101,25 +155,29 @@ src/
                  index.ts          App-Lifecycle, Hotkey, Fenster erzeugen
                  overlayWindow.ts  Fenster erzeugen, Drag/Resize, Persistenz verdrahten
                  layoutStore.ts    Fenstergeometrie als JSON im Nutzerprofil
+                 selectionStore.ts Overlay-Auswahl (an/aus) als JSON im Nutzerprofil
+                 launcherWindow.ts Auswahl-Fenster: Checkboxen + Start
                  dataLayer.ts      startet den Datenlayer im Main-Process
-                 tray.ts           System-Tray: Edit-Modus, Beenden
+                 tray.ts           System-Tray: Overlays auswaehlen, Edit-Modus, Beenden
                  resources.ts      findet Icons in Dev- und gepacktem Build
   preload/     contextBridge-APIs fuer die Renderer
   renderer/    ein Ordner pro Overlay/Fenster, je ein Vite-Eintrag
                  shared/           Overlay-uebergreifend: WS-Client, Formatierung,
                                     Edit-Modus-Verdrahtung, Basis-CSS
+                 launcher/         Auswahl-Fenster: welche Overlays sollen an sein
                  relative/         Autos vor/hinter dem Spieler (Meilenstein 2)
                  standings/        Session-Wertung nach Klasse (Meilenstein 4)
                  fuel/             Verbrauch, Restrunden, Nachtankmenge (Meilenstein 4)
                  inputs/           Gas/Bremse/Lenkung als Graph, Gang+Drehzahl (Meilenstein 5)
                  radar/            Naehe-Warnung + Autos in der Umgebung (Meilenstein 5)
                  delta/            Abstand zur eigenen Bestzeit (Meilenstein 6)
+                 laptimes/         Balkendiagramm der letzten 5 Rundenzeiten
                  timer/            Session-Countdown, Runden/Zeit (Meilenstein 6)
                  weather/          Luft-/Streckentemperatur, Nasszustand (Meilenstein 6)
                  flags/            Aktive Streckenflaggen (Meilenstein 6)
   data/        Datenlayer, eigenstaendig lauffaehig ohne Electron:
                  types.ts        normalisiertes Modell
-                 calc/            reine Funktionen (Relative-Gap, Fuel-Planung, Standings), getestet
+                 calc/            reine Funktionen (Relative-Gap, Fuel-Planung, Standings, Rundenzeiten-Historie), getestet
                  normalize/       SDK-Rohdaten -> normalisiertes Modell
                  mock/            simulierte Telemetrie ohne iRacing
                  server/          WebSocket-Broadcast
@@ -148,7 +206,7 @@ npx vitest run
 ```
 
 Testet die reinen Berechnungsfunktionen (`src/data/calc/`): Relative-Gap,
-Fuel-Tracking/-Planung, Standings-Gruppierung.
+Fuel-Tracking/-Planung, Standings-Gruppierung, Rundenzeiten-Historie.
 
 ## Radar: bewusste Design-Entscheidung
 
