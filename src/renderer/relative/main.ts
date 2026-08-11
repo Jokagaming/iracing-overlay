@@ -26,6 +26,7 @@ interface RowElements {
   classCell: HTMLTableCellElement;
   position: HTMLTableCellElement;
   number: HTMLTableCellElement;
+  car: HTMLTableCellElement;
   name: HTMLTableCellElement;
   irating: HTMLTableCellElement;
   laps: HTMLTableCellElement;
@@ -51,13 +52,14 @@ function createRow(): RowElements {
     <td class="relative__class"></td>
     <td class="relative__position"></td>
     <td class="relative__number"></td>
+    <td class="relative__car"></td>
     <td class="relative__name"></td>
     <td class="relative__irating"></td>
     <td class="relative__laps"></td>
     <td class="relative__gap"></td>
   `;
-  const [classCell, position, number, name, irating, laps, gap] = tr.children as unknown as HTMLTableCellElement[];
-  const row: RowElements = { tr, classCell: classCell!, position: position!, number: number!, name: name!, irating: irating!, laps: laps!, gap: gap! };
+  const [classCell, position, number, car, name, irating, laps, gap] = tr.children as unknown as HTMLTableCellElement[];
+  const row: RowElements = { tr, classCell: classCell!, position: position!, number: number!, car: car!, name: name!, irating: irating!, laps: laps!, gap: gap! };
   rowPool.push(row);
   bodyEl.append(tr);
   return row;
@@ -78,6 +80,7 @@ function renderRow(row: RowElements, entry: RelativeRow, classes: Map<number, Ca
   row.classCell.style.setProperty('--class-color', carClass?.color ?? 'transparent');
   setText(row.position, entry.classPosition ? `P${entry.classPosition}` : '');
   setText(row.number, entry.carNumber ? `#${entry.carNumber}` : '');
+  setText(row.car, entry.carName);
   setText(row.name, format.driverName(entry.userName));
   setText(row.irating, format.iRating(entry.iRating));
 

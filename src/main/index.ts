@@ -11,7 +11,7 @@ const DATA_HOST = '127.0.0.1';
 const DATA_PORT = 8778;
 // Startpositionen, falls noch kein Layout gespeichert ist (erster Start).
 const OVERLAY_WINDOWS = [
-  { id: 'relative', x: 40, y: 40, width: 340, height: 260 },
+  { id: 'relative', x: 40, y: 40, width: 380, height: 260 },
   { id: 'standings', x: 400, y: 40, width: 360, height: 320 },
   { id: 'fuel', x: 40, y: 320, width: 220, height: 190 },
   { id: 'inputs', x: 780, y: 40, width: 300, height: 150 },

@@ -11,6 +11,7 @@ function makeDriver(overrides: Partial<Driver> & { carIdx: number }): Driver {
     userName: `Fahrer ${overrides.carIdx}`,
     carNumber: String(overrides.carIdx),
     carClassId: 1,
+    carName: 'Testwagen',
     iRating: 3000,
     safetyRating: 'A 3.45',
     licenseColor: '#0153db',

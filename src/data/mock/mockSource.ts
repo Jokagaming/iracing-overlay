@@ -19,9 +19,9 @@ const RACE_DURATION_SEC = 3600;
 const UNLIMITED_LAPS_SENTINEL = 32767;
 
 const CLASSES = [
-  { id: 4011, name: 'GTP', color: '#ff5b3a', relSpeed: 100, lapTime: 96 },
-  { id: 2708, name: 'GT3', color: '#3ad1ff', relSpeed: 80, lapTime: 103.5 },
-  { id: 3200, name: 'GT4', color: '#9dff3a', relSpeed: 60, lapTime: 112 },
+  { id: 4011, name: 'GTP', color: '#ff5b3a', relSpeed: 100, lapTime: 96, cars: ['Cadillac V-Series.R', 'Porsche 963', 'Acura ARX-06'] },
+  { id: 2708, name: 'GT3', color: '#3ad1ff', relSpeed: 80, lapTime: 103.5, cars: ['Mercedes-AMG GT3', 'BMW M4 GT3', 'Ferrari 296 GT3', 'Ford Mustang GT3'] },
+  { id: 3200, name: 'GT4', color: '#9dff3a', relSpeed: 60, lapTime: 112, cars: ['Porsche 718 Cayman GT4', 'Aston Martin Vantage GT4', 'McLaren 570S GT4'] },
 ];
 
 const NAMES = [
@@ -38,6 +38,7 @@ interface MockCar {
   offset: number;
   name: string;
   number: string;
+  carName: string;
   iRating: number;
 }
 
@@ -76,6 +77,7 @@ export class MockSource implements DataSource {
         offset: idx * 0.011,
         name: NAMES[idx]!,
         number: String(1 + Math.floor(rng() * 98)),
+        carName: carClass.cars[idx % carClass.cars.length]!,
         iRating: 1200 + Math.floor(rng() * 6600),
       };
     });
@@ -113,6 +115,7 @@ export class MockSource implements DataSource {
       userName: car.name,
       carNumber: car.number,
       carClassId: car.carClass.id,
+      carName: car.carName,
       iRating: car.iRating,
       safetyRating: 'A 3.45',
       licenseColor: '#0153db',
@@ -185,6 +188,7 @@ export class MockSource implements DataSource {
         userName: car.name,
         carNumber: car.number,
         carClassId: car.carClass.id,
+        carName: car.carName,
         iRating: car.iRating,
         safetyRating: 'A 3.45',
         licenseColor: '#0153db',

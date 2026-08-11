@@ -41,6 +41,10 @@ function showStatus(text: string): void {
   setText(statusEl, text);
   statusEl.classList.remove('is-hidden');
   bodyEl.classList.add('is-hidden');
+  // Status (z.B. "Warte auf iRacing") muss auch dann sichtbar sein, wenn
+  // der Radar zuvor wegen Ruhe ausgeblendet war - sonst verschwaende die
+  // Meldung mitsamt dem restlichen Widget.
+  widgetEl.classList.remove('radar--quiet');
 }
 
 function render(client: TelemetryClient): void {
@@ -88,6 +92,13 @@ function render(client: TelemetryClient): void {
     'radar__side--warn',
     clr === 'car_right' || clr === 'cars_left_right' || clr === 'cars_2_right',
   );
+
+  // Ohne Auto in der Naehe (weder laengsseitig im Bereich noch das
+  // CarLeftRight-Signal aktiv) gibt es nichts zu warnen - das Widget bleibt
+  // dann unsichtbar statt einen leeren Rahmen ueber dem Bild zu zeigen. Im
+  // Edit-Modus trotzdem sichtbar, sonst liesse es sich nicht positionieren.
+  const hasNearbyCar = nearby.length > 0 || (clr !== 'off' && clr !== 'clear');
+  widgetEl.classList.toggle('radar--quiet', !hasNearbyCar);
 }
 
 wireEditMode(widgetEl, resizeGripEl);

@@ -4,6 +4,13 @@
   min-width: 130px;
 }
 
+/* Ohne Auto in der Naehe komplett unsichtbar statt ein leerer Rahmen ueber
+   dem Bild - ausser im Edit-Modus, sonst liesse sich das Fenster nicht
+   mehr greifen/positionieren (siehe overlay.css, [data-edit="true"]). */
+.radar.radar--quiet:not([data-edit='true']) {
+  opacity: 0;
+}
+
 .radar__body {
   display: flex;
   gap: 4px;

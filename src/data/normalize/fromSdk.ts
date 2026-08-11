@@ -83,6 +83,7 @@ function buildRoster(sdk: IRacingSDK): DriverRosterEntry[] {
     userName: d.UserName,
     carNumber: d.CarNumber,
     carClassId: d.CarClassID ?? null,
+    carName: d.CarScreenNameShort || d.CarScreenName || '',
     iRating: d.IRating ?? null,
     safetyRating: d.LicString ?? null,
     licenseColor: toCssColor(d.LicColor),
