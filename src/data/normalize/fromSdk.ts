@@ -16,6 +16,7 @@ import type {
   DriverRosterEntry,
   PlayerCarInfo,
   PlayerState,
+  SectorBoundary,
   SessionSegment,
   SessionState,
   TelemetryFrame,
@@ -115,6 +116,12 @@ function buildCarClasses(sdk: IRacingSDK, roster: DriverRosterEntry[]): CarClass
   return [...classes.values()].sort((a, b) => b.relSpeed - a.relSpeed);
 }
 
+/** `SplitTimeInfo.Sectors` - nur Grenzen, keine Zeiten (siehe calc/sectors.ts). Sortiert nach `startPct`, falls das SDK sie nicht schon sortiert liefert. */
+function buildSectors(sdk: IRacingSDK): SectorBoundary[] {
+  const sectors = sdk.getSplitInfo()?.Sectors ?? [];
+  return sectors.map((s) => ({ num: s.SectorNum, startPct: s.SectorStartPct })).sort((a, b) => a.startPct - b.startPct);
+}
+
 function buildPlayerCar(driverInfo: ReturnType<IRacingSDK['getDriverInfo']>): PlayerCarInfo {
   return {
     idleRpm: driverInfo?.DriverCarIdleRPM ?? 0,
@@ -138,6 +145,7 @@ export function buildSessionState(sdk: IRacingSDK, updateId: number): SessionSta
     paceCarIdx: driverInfo?.PaceCarIdx ?? null,
     estLapTimeSec: driverInfo?.DriverCarEstLapTime || 90,
     playerCar: buildPlayerCar(driverInfo),
+    sectors: buildSectors(sdk),
   };
 }
 
@@ -194,9 +202,11 @@ function buildPlayer(t: TelemetryVarList, playerCarIdx: number): PlayerState {
     },
     tires: buildTires(t),
     carLeftRight: decodeCarLeftRight(scalarNum(t.CarLeftRight)),
-    // Wird vom Connector nach dem Aufruf hier befuellt - siehe fuel oben
-    // und calc/laptimes.ts, braucht Zustand ueber mehrere Ticks.
+    // Wird vom Connector nach dem Aufruf hier befuellt - siehe fuel oben,
+    // calc/laptimes.ts und calc/sectors.ts, braucht Zustand ueber mehrere Ticks.
     lastLapTimesSec: [],
+    sectorTimes: [],
+    currentSector: null,
   };
 }
 

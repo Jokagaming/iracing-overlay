@@ -15,6 +15,7 @@ import type { BridgeMessage, DriverRosterEntry } from './types.js';
 import { buildSessionState, buildTelemetryFrame } from './normalize/fromSdk.js';
 import { FuelTracker } from './calc/fuel.js';
 import { LapTimeTracker } from './calc/laptimes.js';
+import { SectorTracker } from './calc/sectors.js';
 
 const POLL_TIMEOUT_MS = Math.floor((1 / 60) * 1000); // ~16ms, siehe irsdk-node README
 const RECONNECT_DELAY_MS = 1000;
@@ -37,6 +38,7 @@ export class IRacingConnector implements DataSource {
   private lastConnectAttempt = 0;
   private fuelTracker = new FuelTracker();
   private lapTimeTracker = new LapTimeTracker();
+  private sectorTracker = new SectorTracker();
 
   get lastSessionMessage(): BridgeMessage | null {
     return this.sessionMessage;
@@ -66,6 +68,7 @@ export class IRacingConnector implements DataSource {
     const frame = buildTelemetryFrame(this.sdk, this.seq, this.roster, this.playerCarIdx);
     this.enrichFuel(frame);
     this.enrichLapTimes(frame);
+    this.enrichSectors(frame);
     messages.push({ type: 'telemetry', ...frame });
     return messages;
   }
@@ -89,6 +92,16 @@ export class IRacingConnector implements DataSource {
     const me = frame.drivers.find((d) => d.carIdx === frame.player.carIdx);
     this.lapTimeTracker.update(me?.lap ?? 0, me?.lastLapSec ?? null);
     frame.player.lastLapTimesSec = this.lapTimeTracker.lastLaps;
+  }
+
+  /** Wie enrichFuel() oben - Sektorzeiten aus Uebergaengen brauchen Zustand ueber mehrere Ticks, siehe calc/sectors.ts. */
+  private enrichSectors(frame: ReturnType<typeof buildTelemetryFrame>): void {
+    const me = frame.drivers.find((d) => d.carIdx === frame.player.carIdx);
+    this.sectorTracker.update(me?.lapDistPct ?? 0, frame.sessionTimeSec);
+    frame.player.sectorTimes = this.sectorTracker.results;
+    const num = this.sectorTracker.currentSectorNum;
+    const elapsedSec = this.sectorTracker.currentElapsedSec(frame.sessionTimeSec);
+    frame.player.currentSector = num != null && elapsedSec != null ? { num, elapsedSec } : null;
   }
 
   private async tryConnect(): Promise<BridgeMessage[]> {
@@ -125,10 +138,13 @@ export class IRacingConnector implements DataSource {
     const session = buildSessionState(this.sdk, version);
     this.roster = session.drivers;
     this.playerCarIdx = session.playerCarIdx;
-    // Neue Session (anderes Auto, neuer Boxenstopp-Kontext, Neustart) -
-    // alte Verbrauchs-/Rundenzeiten-Historie ist nicht mehr aussagekraeftig.
+    // Neue Session (anderes Auto, neuer Boxenstopp-Kontext, Neustart,
+    // moeglicherweise andere Strecke mit anderen Sektorgrenzen) - alte
+    // Verbrauchs-/Rundenzeiten-/Sektor-Historie ist nicht mehr aussagekraeftig.
     this.fuelTracker = new FuelTracker();
     this.lapTimeTracker = new LapTimeTracker();
+    this.sectorTracker = new SectorTracker();
+    this.sectorTracker.setBoundaries(session.sectors);
     const message: BridgeMessage = { type: 'session', ...session };
     this.sessionMessage = message;
     return message;

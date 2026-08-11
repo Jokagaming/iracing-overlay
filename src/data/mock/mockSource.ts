@@ -11,6 +11,14 @@ import type { BridgeMessage, CarLeftRight, Driver, DriverRosterEntry, SessionSta
 import type { DataSource } from '../connector.js';
 import { FuelTracker } from '../calc/fuel.js';
 import { LapTimeTracker } from '../calc/laptimes.js';
+import { SectorTracker } from '../calc/sectors.js';
+
+/** Drei gleich lange Sektoren, fuer die Demo - eine echte Strecke koennte beliebig viele in beliebigen Abstaenden haben. */
+const SECTORS = [
+  { num: 1, startPct: 0 },
+  { num: 2, startPct: 0.33 },
+  { num: 3, startPct: 0.66 },
+];
 
 const TRACK_LENGTH_M = 5793;
 const LAP_TIME_BASE = 103.5;
@@ -61,6 +69,7 @@ export class MockSource implements DataSource {
   private readonly startedAt = performance.now();
   private readonly fuelTracker = new FuelTracker();
   private readonly lapTimeTracker = new LapTimeTracker();
+  private readonly sectorTracker = new SectorTracker();
   private seq = 0;
   private sessionSent = false;
 
@@ -85,6 +94,7 @@ export class MockSource implements DataSource {
     });
 
     this.sessionMessage = { type: 'session', ...this.buildSessionState() };
+    this.sectorTracker.setBoundaries(SECTORS);
   }
 
   get lastSessionMessage(): BridgeMessage | null {
@@ -147,6 +157,7 @@ export class MockSource implements DataSource {
       paceCarIdx: null,
       estLapTimeSec: LAP_TIME_BASE,
       playerCar: { idleRpm: 1200, redLineRpm: 7800, shiftLightShiftRpm: 7400, shiftLightBlinkRpm: 7700 },
+      sectors: SECTORS,
     };
   }
 
@@ -233,6 +244,10 @@ export class MockSource implements DataSource {
     const usePerLapLiters = this.fuelTracker.averagePerLapLiters;
     const carLeftRight = this.simulateCarLeftRight(progress);
 
+    this.sectorTracker.update(lapPct, elapsedSec);
+    const currentSectorNum = this.sectorTracker.currentSectorNum;
+    const currentSectorElapsedSec = this.sectorTracker.currentElapsedSec(elapsedSec);
+
     return {
       seq: this.seq,
       sessionTimeSec: elapsedSec,
@@ -268,6 +283,11 @@ export class MockSource implements DataSource {
         },
         carLeftRight,
         lastLapTimesSec: this.lapTimeTracker.lastLaps,
+        sectorTimes: this.sectorTracker.results,
+        currentSector:
+          currentSectorNum != null && currentSectorElapsedSec != null
+            ? { num: currentSectorNum, elapsedSec: currentSectorElapsedSec }
+            : null,
       },
       weather: { airTempC: 24, trackTempC: 34.5, humidityPct: 0.45, trackWetness: 'dry' },
     };

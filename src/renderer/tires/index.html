@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>Reifen</title>
+    <link rel="stylesheet" href="tires.css" />
+  </head>
+  <body>
+    <div class="widget tires" id="widget">
+      <div class="widget__header">
+        <span>Reifen</span>
+      </div>
+      <div class="widget__status" id="status">Verbinde mit der Bridge ...</div>
+      <div class="tires__body is-hidden" id="body">
+        <div class="tires__grid">
+          <div class="tires__tire">
+            <div class="tires__label">LF</div>
+            <div class="tires__temps">
+              <span class="tires__temp" id="lf-inner"></span>
+              <span class="tires__temp" id="lf-middle"></span>
+              <span class="tires__temp" id="lf-outer"></span>
+            </div>
+            <div class="tires__wear-bar"><div class="tires__wear-fill" id="lf-wear-fill"></div></div>
+            <div class="tires__meta">
+              <span id="lf-wear-label"></span>
+              <span id="lf-pressure"></span>
+            </div>
+          </div>
+          <div class="tires__tire">
+            <div class="tires__label">RF</div>
+            <div class="tires__temps">
+              <span class="tires__temp" id="rf-inner"></span>
+              <span class="tires__temp" id="rf-middle"></span>
+              <span class="tires__temp" id="rf-outer"></span>
+            </div>
+            <div class="tires__wear-bar"><div class="tires__wear-fill" id="rf-wear-fill"></div></div>
+            <div class="tires__meta">
+              <span id="rf-wear-label"></span>
+              <span id="rf-pressure"></span>
+            </div>
+          </div>
+          <div class="tires__tire">
+            <div class="tires__label">LR</div>
+            <div class="tires__temps">
+              <span class="tires__temp" id="lr-inner"></span>
+              <span class="tires__temp" id="lr-middle"></span>
+              <span class="tires__temp" id="lr-outer"></span>
+            </div>
+            <div class="tires__wear-bar"><div class="tires__wear-fill" id="lr-wear-fill"></div></div>
+            <div class="tires__meta">
+              <span id="lr-wear-label"></span>
+              <span id="lr-pressure"></span>
+            </div>
+          </div>
+          <div class="tires__tire">
+            <div class="tires__label">RR</div>
+            <div class="tires__temps">
+              <span class="tires__temp" id="rr-inner"></span>
+              <span class="tires__temp" id="rr-middle"></span>
+              <span class="tires__temp" id="rr-outer"></span>
+            </div>
+            <div class="tires__wear-bar"><div class="tires__wear-fill" id="rr-wear-fill"></div></div>
+            <div class="tires__meta">
+              <span id="rr-wear-label"></span>
+              <span id="rr-pressure"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="widget__resize-grip" id="resize-grip"></div>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

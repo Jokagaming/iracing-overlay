@@ -1,0 +1,45 @@
+@import "../shared/overlay.css";
+
+.sectors {
+  min-width: 140px;
+}
+
+.sectors__body {
+  padding: 6px 8px;
+}
+
+.sectors__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 4px;
+  font-size: 12px;
+}
+
+.sectors__row--live {
+  margin-bottom: 4px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 700;
+  color: var(--player);
+}
+
+.sectors__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sectors__num {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.sectors__time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.sectors__time--best {
+  color: var(--good);
+}

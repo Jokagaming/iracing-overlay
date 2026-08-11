@@ -10,6 +10,8 @@ const rendererEntries = {
   radar: resolve(__dirname, 'src/renderer/radar/index.html'),
   delta: resolve(__dirname, 'src/renderer/delta/index.html'),
   laptimes: resolve(__dirname, 'src/renderer/laptimes/index.html'),
+  tires: resolve(__dirname, 'src/renderer/tires/index.html'),
+  sectors: resolve(__dirname, 'src/renderer/sectors/index.html'),
   timer: resolve(__dirname, 'src/renderer/timer/index.html'),
   weather: resolve(__dirname, 'src/renderer/weather/index.html'),
   flags: resolve(__dirname, 'src/renderer/flags/index.html'),
