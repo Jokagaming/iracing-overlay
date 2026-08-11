@@ -4,7 +4,8 @@ import { DataLayer } from './dataLayer.js';
 import { createOverlayWindow, setEditMode } from './overlayWindow.js';
 import { createTray } from './tray.js';
 import { createLauncherWindow, showLauncherWindow } from './launcherWindow.js';
-import { loadSelection, saveSelection } from './selectionStore.js';
+import { loadProfiles, saveProfiles, uniqueProfileId, type Profile, type ProfilesFile } from './profileStore.js';
+import { deleteLayoutFile } from './layoutStore.js';
 import { checkForUpdates, setupAutoUpdate } from './autoUpdate.js';
 
 const EDIT_MODE_HOTKEY = 'Control+Alt+E';
@@ -44,6 +45,10 @@ const dataLayer = new DataLayer();
 // einzelne davon an/aus, ohne die App neu zu starten.
 const overlayWindows = new Map<string, BrowserWindow>();
 let editMode = false;
+// Alle Layout-Profile + welches davon gerade aktiv ist - siehe profileStore.ts.
+// Wird in app.whenReady() aus der Nutzerdatei geladen, danach hier live gehalten.
+let profilesFile: ProfilesFile = { activeProfileId: '', profiles: [] };
+let activeProfileId = '';
 // Muss am Leben gehalten werden - ein garbage-collectes Tray-Objekt laesst
 // das Icon kommentarlos aus der Taskleiste verschwinden.
 let tray: Tray | null = null;
@@ -65,19 +70,35 @@ function toggleEditMode(): void {
 async function openOverlay(id: string): Promise<void> {
   const config = OVERLAY_WINDOWS.find((w) => w.id === id);
   if (!config) return;
-  const win = await createOverlayWindow(config, () => dataLayer.getWelcomeMessages());
+  const win = await createOverlayWindow(config, activeProfileId, () => dataLayer.getWelcomeMessages());
   if (editMode) setEditMode([win], true);
   overlayWindows.set(id, win);
 }
 
-/** Wird vom Launcher-Fenster mit der Checkbox-Auswahl aufgerufen: schliesst Abgewaehltes, oeffnet Neues, speichert die Auswahl. */
-async function applySelection(selectedIds: string[]): Promise<void> {
-  const selected = new Set(selectedIds);
+function findProfile(profileId: string): Profile | undefined {
+  return profilesFile.profiles.find((p) => p.id === profileId);
+}
 
-  for (const [id, win] of overlayWindows) {
-    if (!selected.has(id)) {
-      win.close();
-      overlayWindows.delete(id);
+/**
+ * Wird vom Launcher-Fenster mit Profil + Checkbox-Auswahl aufgerufen.
+ * Bei gleichbleibendem Profil wie bisher nur die Differenz oeffnen/
+ * schliessen; beim Profilwechsel gehoeren alle offenen Fenster zum alten
+ * Profil und lassen sich nicht einzeln "umhaengen" - komplett neu aufbauen.
+ */
+async function applyProfile(profileId: string, selectedIds: string[]): Promise<void> {
+  const selected = new Set(selectedIds);
+  const switchingProfile = profileId !== activeProfileId;
+
+  if (switchingProfile) {
+    for (const win of overlayWindows.values()) win.close();
+    overlayWindows.clear();
+    activeProfileId = profileId;
+  } else {
+    for (const [id, win] of overlayWindows) {
+      if (!selected.has(id)) {
+        win.close();
+        overlayWindows.delete(id);
+      }
     }
   }
 
@@ -85,21 +106,73 @@ async function applySelection(selectedIds: string[]): Promise<void> {
     if (!overlayWindows.has(id)) await openOverlay(id);
   }
 
-  await saveSelection([...selected]);
+  const profile = findProfile(profileId);
+  if (profile) profile.selectedOverlayIds = [...selected];
+  profilesFile.activeProfileId = activeProfileId;
+  await saveProfiles(profilesFile);
+}
+
+async function createProfile(name: string): Promise<Profile> {
+  const trimmed = name.trim() || 'Profil';
+  const profile: Profile = {
+    id: uniqueProfileId(trimmed, profilesFile.profiles),
+    name: trimmed,
+    // Neues Profil startet mit allen Overlays angehakt - derselbe Default wie beim allerersten App-Start.
+    selectedOverlayIds: OVERLAY_WINDOWS.map((w) => w.id),
+  };
+  profilesFile.profiles.push(profile);
+  await saveProfiles(profilesFile);
+  return profile;
+}
+
+async function renameProfile(profileId: string, name: string): Promise<void> {
+  const profile = findProfile(profileId);
+  const trimmed = name.trim();
+  if (!profile || !trimmed) return;
+  profile.name = trimmed;
+  await saveProfiles(profilesFile);
+}
+
+/** Letztes verbleibendes Profil laesst sich nicht loeschen - es muss immer mindestens eines geben. */
+async function deleteProfile(profileId: string): Promise<{ profiles: Profile[]; activeProfileId: string }> {
+  if (profilesFile.profiles.length <= 1) {
+    return { profiles: profilesFile.profiles, activeProfileId };
+  }
+
+  profilesFile.profiles = profilesFile.profiles.filter((p) => p.id !== profileId);
+  await deleteLayoutFile(profileId);
+
+  if (activeProfileId === profileId) {
+    // Aktives Profil geloescht - offene Fenster gehoeren zu keinem
+    // existierenden Profil mehr, schliessen statt sie verwaist stehen zu lassen.
+    for (const win of overlayWindows.values()) win.close();
+    overlayWindows.clear();
+    activeProfileId = profilesFile.profiles[0]!.id;
+  }
+
+  profilesFile.activeProfileId = activeProfileId;
+  await saveProfiles(profilesFile);
+  return { profiles: profilesFile.profiles, activeProfileId };
 }
 
 const DEFAULT_TELEMETRY_HZ = 20;
 
 app.whenReady().then(async () => {
-  const savedSelection = await loadSelection();
-  // Erster Start (noch keine gespeicherte Auswahl): alle Overlays vorausgewaehlt.
-  const initialSelection = savedSelection ?? OVERLAY_WINDOWS.map((w) => w.id);
+  profilesFile = await loadProfiles(OVERLAY_WINDOWS.map((w) => w.id));
+  activeProfileId = profilesFile.activeProfileId;
 
   createLauncherWindow({
     overlays: OVERLAY_WINDOWS.map((w) => ({ id: w.id, label: OVERLAY_LABELS[w.id] ?? w.id })),
-    getSelected: () => (overlayWindows.size > 0 ? [...overlayWindows.keys()] : initialSelection),
-    onStart: (selectedIds) => {
-      void applySelection(selectedIds);
+    getProfiles: () => profilesFile.profiles,
+    getActiveProfileId: () => activeProfileId,
+    getRunningOverlayIds: () => [...overlayWindows.keys()],
+    onCreateProfile: (name) => createProfile(name),
+    onRenameProfile: (profileId, name) => {
+      void renameProfile(profileId, name);
+    },
+    onDeleteProfile: (profileId) => deleteProfile(profileId),
+    onStart: (profileId, selectedIds) => {
+      void applyProfile(profileId, selectedIds);
     },
   });
 

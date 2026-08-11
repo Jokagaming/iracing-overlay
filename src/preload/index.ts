@@ -31,13 +31,29 @@ contextBridge.exposeInMainWorld('overlayAPI', {
   },
 });
 
+export interface LauncherProfile {
+  id: string;
+  name: string;
+  selectedOverlayIds: string[];
+}
+
 // Nur vom Launcher-Fenster genutzt (src/renderer/launcher) - in den
 // Overlay-Fenstern ungenutzt, aber unschaedlich, da alle Fenster dasselbe
 // Preload-Skript laden.
 contextBridge.exposeInMainWorld('launcherAPI', {
-  getConfig: (): Promise<{ overlays: { id: string; label: string }[]; selected: string[] }> =>
-    ipcRenderer.invoke('launcher:get-config'),
-  start: (selectedIds: string[]): void => {
-    ipcRenderer.send('launcher:start', selectedIds);
+  getConfig: (): Promise<{
+    overlays: { id: string; label: string }[];
+    profiles: LauncherProfile[];
+    activeProfileId: string;
+    runningOverlayIds: string[];
+  }> => ipcRenderer.invoke('launcher:get-config'),
+  createProfile: (name: string): Promise<LauncherProfile> => ipcRenderer.invoke('launcher:create-profile', name),
+  renameProfile: (profileId: string, name: string): void => {
+    ipcRenderer.send('launcher:rename-profile', profileId, name);
+  },
+  deleteProfile: (profileId: string): Promise<{ profiles: LauncherProfile[]; activeProfileId: string }> =>
+    ipcRenderer.invoke('launcher:delete-profile', profileId),
+  start: (profileId: string, selectedIds: string[]): void => {
+    ipcRenderer.send('launcher:start', profileId, selectedIds);
   },
 });

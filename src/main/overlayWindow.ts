@@ -20,7 +20,7 @@ const MIN_WIDTH = 160;
 const MIN_HEIGHT = 80;
 
 export interface OverlayWindowConfig {
-  /** Eindeutige ID des Overlays - Schluessel in layouts/default.json UND
+  /** Eindeutige ID des Overlays - Schluessel in layouts/<profilId>.json UND
    *  muss zum Schluessel in electron.vite.config.ts's rendererEntries passen. */
   id: string;
   x: number;
@@ -50,9 +50,10 @@ function resolveInitialBounds(config: OverlayWindowConfig, saved: WindowLayout |
 
 export async function createOverlayWindow(
   config: OverlayWindowConfig,
+  profileId: string,
   getWelcomeMessages?: () => BridgeMessage[],
 ): Promise<BrowserWindow> {
-  const saved = await loadWindowLayout(config.id);
+  const saved = await loadWindowLayout(profileId, config.id);
   const bounds = resolveInitialBounds(config, saved);
 
   const win = new BrowserWindow({
@@ -91,14 +92,14 @@ export async function createOverlayWindow(
     for (const message of getWelcomeMessages?.() ?? []) win.webContents.send('bridge-message', message);
   });
 
-  wirePersistence(win, config.id);
+  wirePersistence(win, profileId, config.id);
   wireResizeHandle(win, config.id);
 
   return win;
 }
 
 /** Speichert Position/Groesse entprellt, sobald das Fenster bewegt oder per Griff resized wird. */
-function wirePersistence(win: BrowserWindow, overlayId: string): void {
+function wirePersistence(win: BrowserWindow, profileId: string, overlayId: string): void {
   let timer: NodeJS.Timeout | null = null;
 
   const scheduleSave = () => {
@@ -107,8 +108,8 @@ function wirePersistence(win: BrowserWindow, overlayId: string): void {
       if (win.isDestroyed()) return;
       const b = win.getBounds();
       const layout: WindowLayout = { ...b, displayId: currentDisplayId(b) };
-      saveWindowLayout(overlayId, layout).catch((err: unknown) => {
-        console.error(`[layout] Speichern fuer "${overlayId}" fehlgeschlagen:`, err);
+      saveWindowLayout(profileId, overlayId, layout).catch((err: unknown) => {
+        console.error(`[layout] Speichern fuer "${overlayId}" (Profil "${profileId}") fehlgeschlagen:`, err);
       });
     }, SAVE_DEBOUNCE_MS);
   };
