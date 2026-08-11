@@ -5,6 +5,7 @@ import { createOverlayWindow, setEditMode } from './overlayWindow.js';
 import { createTray } from './tray.js';
 import { createLauncherWindow, showLauncherWindow } from './launcherWindow.js';
 import { loadSelection, saveSelection } from './selectionStore.js';
+import { checkForUpdates, setupAutoUpdate } from './autoUpdate.js';
 
 const EDIT_MODE_HOTKEY = 'Control+Alt+E';
 const DATA_HOST = '127.0.0.1';
@@ -111,7 +112,10 @@ app.whenReady().then(async () => {
     onToggleEditMode: toggleEditMode,
     isEditMode: () => editMode,
     onOpenLauncher: showLauncherWindow,
+    onCheckForUpdates: checkForUpdates,
   });
+
+  setupAutoUpdate();
 
   // --demo laesst die App ohne laufendes iRacing testen, z.B. via
   // `npm run dev -- --demo` im electron-vite-Entwicklungsmodus.

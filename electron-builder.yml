@@ -30,3 +30,14 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
+
+# Noetig, damit electron-builder ein app-update.yml in den Build packt (das
+# sagt electron-updater zur Laufzeit, wo er nach neuen Versionen suchen
+# soll) - ohne diesen Block wuesste die App selbst nach einem Release nicht,
+# gegen welchen Feed sie pruefen soll. Ein lokales `npm run package` laedt
+# dadurch noch NICHTS hoch (siehe README, "Releases veroeffentlichen") -
+# das passiert nur mit explizitem `--publish` und gesetztem GH_TOKEN.
+publish:
+  provider: github
+  owner: Jokagaming
+  repo: iracing-overlay

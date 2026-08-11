@@ -66,8 +66,40 @@ Da alle Overlay-Fenster rahmenlos sind und keinen Schliessen-Button haben,
 ist der **System-Tray** (gelber Punkt) die einzige Stelle, um die App
 danach noch zu steuern: Klick oeffnet ein Menue mit "Overlays
 auswaehlen..." (oeffnet erneut das Auswahl-Fenster), "Edit-Modus"
-(derselbe Toggle wie `Strg+Alt+E`) und "Beenden". Ohne den Tray liesse sich
-die App nur ueber den Task-Manager beenden.
+(derselbe Toggle wie `Strg+Alt+E`), "Nach Updates suchen" (siehe
+"Auto-Update" unten) und "Beenden". Ohne den Tray liesse sich die App nur
+ueber den Task-Manager beenden.
+
+## Auto-Update
+
+Ein installierter Client prueft automatisch gegen die GitHub Releases
+dieses Repos (`electron-updater`) - einmal beim Start, danach alle 4
+Stunden, zusaetzlich manuell ueber "Nach Updates suchen" im Tray. Ist ein
+Update fertig heruntergeladen, fragt ein natives Dialogfenster, ob jetzt
+neu gestartet werden soll; bei "Spaeter" installiert es sich automatisch
+beim naechsten Beenden der App. Aktiv nur im gepackten Build - im
+Dev-Modus (`npm run dev`) gibt es kein `app-update.yml` und keinen Grund,
+gegen echte Releases zu pruefen.
+
+**Release veroeffentlichen:**
+
+```
+# 1. Version in package.json anheben (z.B. 1.0.0 -> 1.1.0)
+npm run icons
+npx electron-vite build
+GH_TOKEN=<token mit repo-Rechten> npx electron-builder --win --publish always
+```
+
+Der letzte Schritt baut den Installer und laedt ihn direkt als GitHub
+Release hoch (inkl. `latest.yml`, das `electron-updater` zum Vergleichen
+der Versionen braucht) - ohne `--publish` und `GH_TOKEN` passiert beim
+`package`-Skript weiterhin nichts dergleichen, ein lokales `npm run
+package` bleibt rein lokal. `GH_TOKEN` braucht Schreibrechte auf Releases
+dieses Repos (z.B. ein Fine-grained PAT mit "Contents: Read and write").
+
+Unsignierte Installer loesen bei jedem Download/Update weiterhin die
+Windows-SmartScreen-Warnung aus - ohne Code-Signing-Zertifikat laesst sich
+das nicht vermeiden, betrifft Erstinstallation wie Auto-Update gleichermassen.
 
 ## Installer bauen
 

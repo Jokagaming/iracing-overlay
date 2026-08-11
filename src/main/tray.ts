@@ -13,6 +13,7 @@ export interface TrayOptions {
   onToggleEditMode: () => void;
   isEditMode: () => boolean;
   onOpenLauncher: () => void;
+  onCheckForUpdates: () => void;
 }
 
 export function createTray(options: TrayOptions): Tray {
@@ -31,6 +32,8 @@ export function createTray(options: TrayOptions): Tray {
           accelerator: 'Ctrl+Alt+E',
           click: options.onToggleEditMode,
         },
+        { type: 'separator' },
+        { label: 'Nach Updates suchen', click: options.onCheckForUpdates },
         { type: 'separator' },
         { label: 'Beenden', click: () => app.quit() },
       ]),
