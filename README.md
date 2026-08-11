@@ -81,21 +81,35 @@ beim naechsten Beenden der App. Aktiv nur im gepackten Build - im
 Dev-Modus (`npm run dev`) gibt es kein `app-update.yml` und keinen Grund,
 gegen echte Releases zu pruefen.
 
-**Release veroeffentlichen:**
+**Release veroeffentlichen (automatisch, empfohlen):**
+
+`.github/workflows/release.yml` baut bei jedem Push eines `v*`-Tags den
+Installer auf einem echten Windows-Runner (kein Cross-Build - der native
+`@irsdk-node`-Rebuild braucht Windows-Build-Tools) und laedt ihn direkt als
+GitHub Release hoch:
 
 ```
-# 1. Version in package.json anheben (z.B. 1.0.0 -> 1.1.0)
+npm version minor        # oder patch/major - setzt package.json UND den git-Tag
+git push && git push --tags
+```
+
+Danach hat die GitHub-Releases-Seite dieses Repos automatisch die neue
+`.exe` (inkl. `latest.yml` fuer `electron-updater`) - ein Kollege muss nur
+noch diese eine Datei herunterladen und ausfuehren, keine Dev-Tools noetig.
+Fortschritt/Ergebnis unter "Actions" im Repo einsehbar.
+
+**Release veroeffentlichen (manuell, z.B. lokal zum Testen):**
+
+```
 npm run icons
 npx electron-vite build
 GH_TOKEN=<token mit repo-Rechten> npx electron-builder --win --publish always
 ```
 
-Der letzte Schritt baut den Installer und laedt ihn direkt als GitHub
-Release hoch (inkl. `latest.yml`, das `electron-updater` zum Vergleichen
-der Versionen braucht) - ohne `--publish` und `GH_TOKEN` passiert beim
-`package`-Skript weiterhin nichts dergleichen, ein lokales `npm run
-package` bleibt rein lokal. `GH_TOKEN` braucht Schreibrechte auf Releases
-dieses Repos (z.B. ein Fine-grained PAT mit "Contents: Read and write").
+Ohne `--publish` und `GH_TOKEN` passiert beim `package`-Skript weiterhin
+nichts dergleichen, ein lokales `npm run package` bleibt rein lokal.
+`GH_TOKEN` braucht Schreibrechte auf Releases dieses Repos (z.B. ein
+Fine-grained PAT mit "Contents: Read and write").
 
 Unsignierte Installer loesen bei jedem Download/Update weiterhin die
 Windows-SmartScreen-Warnung aus - ohne Code-Signing-Zertifikat laesst sich

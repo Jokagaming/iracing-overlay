@@ -1,0 +1,39 @@
+name: Release
+
+# Baut den Windows-Installer auf einem echten Windows-Runner (nicht per
+# Cross-Build von Linux aus) und laedt ihn direkt als GitHub Release hoch -
+# ausgeloest durch einen Versions-Tag (z.B. `v1.1.0`). electron-builder
+# rebuildet dabei automatisch @irsdk-node/native gegen die gepackte
+# Electron-Node-ABI (siehe README, "Installer bauen"); das braucht die auf
+# windows-latest vorinstallierten Build-Tools (Python, MSVC), deshalb kein
+# Cross-Compile von einem anderen Betriebssystem aus.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-publish:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - run: npm ci
+
+      - run: npm run icons
+
+      - run: npx electron-vite build
+
+      # --publish always laedt Installer + latest.yml direkt als GitHub
+      # Release zum aktuellen Tag hoch - electron-updater braucht beides,
+      # um kuenftige Versionen zu erkennen (siehe src/main/autoUpdate.ts).
+      - run: npx electron-builder --win --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
