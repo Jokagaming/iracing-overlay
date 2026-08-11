@@ -370,12 +370,10 @@ Sollte beim naechsten Mal zuerst erneut gegengeprueft werden.
 
 ## Bekannte offene Punkte
 
-- **Noch nie gegen echtes iRacing getestet.** Der Sim-Prozess lief bei
-  keinem bisherigen Arbeitsschritt (nur Launcher/Client, kein
-  `iRacingSim64DX11.exe`) - `IsSimRunning()` liefert bislang immer `false`.
-  Als "UNSICHER" markierte SDK-Feldnamen/Semantik (`src/data/types.ts`)
-  sowie die komplette Live-Verbindung sind entsprechend nur gegen den
-  Demo-Modus verifiziert, nicht gegen echte Daten.
+- Als "UNSICHER" markierte SDK-Feldnamen/Semantik (`src/data/types.ts`)
+  sind noch nicht gegen echte Session-Daten in jeder denkbaren Konstellation
+  verifiziert, nur gegen den Demo-Modus und den ersten Live-Test (siehe
+  unten).
 - `irsdk-node`s Umgang mit fehlerhaft formatierter Session-YAML (Sonderzeichen
   in Fahrernamen, Team-Events) ist ungeprueft; IRSDKSharper (C#) patcht dafuer
   bekannte Faelle, ob `irsdk-node` das auch tut, ist offen.
@@ -394,3 +392,14 @@ Geklaert: `irsdk-node`s native Bindings laden ohne Probleme in Electrons
 Node-ABI (getestet via `ELECTRON_RUN_AS_NODE=1`) - das Paket wird explizit
 mit `--napi --electron-compat` gebaut, N-API ist ABI-stabil ueber Node- und
 Electron-Versionen hinweg.
+
+Behoben (1.3.1): Im ersten echten Live-Test (laufendes iRacing, installierte
+`.exe`) blieben alle Overlays dauerhaft bei "Warte auf iRacing ...", obwohl
+der Sim lief. Ursache: `@irsdk-node/native`s `.node`-Datei lag im
+asar-Archiv, native Bindings lassen sich aber nicht per `dlopen` aus einem
+Archiv laden (kein echter Dateipfad) - `IRacingSDK.IsSimRunning()` warf
+deshalb bei jedem Tick eine unhandled rejection, lautlos, ohne Logeintrag.
+Fix: `asarUnpack` fuer `@irsdk-node/native` in `electron-builder.yml`
+(entpackt die native Bindung neben das asar-Archiv) plus ein `try/catch`
+um `poll()` in `src/data/connector.ts`, das solche Fehler kuenftig ins Log
+schreibt statt sie verschluckt.

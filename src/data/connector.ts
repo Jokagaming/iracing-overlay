@@ -50,6 +50,25 @@ export class IRacingConnector implements DataSource {
   }
 
   async poll(): Promise<BridgeMessage[]> {
+    try {
+      return await this.pollOnce();
+    } catch (err) {
+      // Ohne diesen Fang wuerde z.B. ein fehlgeschlagenes dlopen der
+      // nativen @irsdk-node/native-Bindung (etwa weil sie im gepackten
+      // Build nicht aus dem asar-Archiv entpackt wurde) bei jedem Tick
+      // erneut als unhandled rejection verpuffen - keine Fehlermeldung im
+      // Log, iRacing wird einfach nie erkannt. Hier stattdessen einmalig
+      // laut werden und wie bei einem normalen Verbindungsabbruch
+      // zuruecksetzen, statt 60x/Sekunde denselben Fehler zu werfen.
+      console.error('[connector] poll() fehlgeschlagen, Verbindung wird zurueckgesetzt:', err);
+      this.sdk?.stopSDK();
+      this.sdk = null;
+      this.lastConnectAttempt = Date.now();
+      return this.emitConnectionChange(false);
+    }
+  }
+
+  private async pollOnce(): Promise<BridgeMessage[]> {
     if (!this.sdk) return this.tryConnect();
 
     const gotData = this.sdk.waitForData(POLL_TIMEOUT_MS);

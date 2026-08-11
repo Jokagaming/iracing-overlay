@@ -21,6 +21,15 @@ extraResources:
     filter:
       - '*.png'
 
+# @irsdk-node/native laedt eine .node-Datei per dlopen - das funktioniert
+# nur mit einem echten Dateipfad, nicht aus dem asar-Archiv heraus (asar
+# ist kein echtes Dateisystem, nur ein von Electrons fs-Patch emuliertes).
+# Ohne diesen Eintrag scheitert jeder Aufruf von IRacingSDK.IsSimRunning()/
+# startSDK() im gepackten Build lautlos (unhandled rejection, siehe
+# connector.ts) - iRacing wird dann selbst bei laufendem Sim nie erkannt.
+asarUnpack:
+  - '**/node_modules/@irsdk-node/native/**'
+
 win:
   target: nsis
   icon: resources/icon.ico
