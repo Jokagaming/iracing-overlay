@@ -64,6 +64,21 @@ export interface Driver {
    * geprueft ist.
    */
   gapToLeaderSec: number | null;
+  /**
+   * `CarIdxTireCompound` - fuer jedes Auto sichtbar (anders als Verschleiss/
+   * Temperatur/Druck, die das SDK nur fuers eigene Auto liefert, siehe
+   * PlayerState.tires). Nur eine rohe Mischungs-Nummer, das SDK liefert
+   * keine Klartext-Zuordnung (z.B. "Weich"/"Hart") dazu - in Serien mit nur
+   * einer Mischung ist der Wert fuer alle gleich. `null` ohne Wert vom SDK.
+   */
+  tireCompound: number | null;
+  /**
+   * Sektorzeiten dieses Autos in dieser Session - wie
+   * `PlayerState.sectorTimes`, aber fuer jedes Auto berechnet (siehe
+   * calc/sectors.ts, `MultiCarSectorTracker`). Ermoeglicht den
+   * Sektor-Vergleich gegen Vorder-/Hintermann im Relative-Overlay.
+   */
+  sectorTimes: SectorResult[];
 }
 
 export interface TrackInfo {
@@ -112,6 +127,13 @@ export interface PlayerCarInfo {
   shiftLightBlinkRpm: number;
 }
 
+/** `SplitTimeInfo.Sectors` - Grenzen der Sektoren, keine Zeiten (die liefert das SDK nicht direkt, siehe calc/sectors.ts). */
+export interface SectorBoundary {
+  num: number;
+  /** 0..1, Anteil der Rundendistanz, an dem dieser Sektor beginnt. */
+  startPct: number;
+}
+
 export interface SessionState {
   updateId: number;
   track: TrackInfo;
@@ -123,6 +145,8 @@ export interface SessionState {
   /** `DriverCarEstLapTime` - Basis fuer die Relative-Gap-Berechnung. */
   estLapTimeSec: number;
   playerCar: PlayerCarInfo;
+  /** Leer, wenn die Strecke keine Sektoren definiert (z.B. manche Ovale/Testtracks). */
+  sectors: SectorBoundary[];
 }
 
 export interface FuelState {
@@ -145,8 +169,20 @@ export interface TireState {
   tempInnerC: number;
   tempMiddleC: number;
   tempOuterC: number;
+  /** 1 = neu, 0 = komplett abgefahren (SDK-Konvention: verbleibende Lauffläche, kein Verschleissbetrag). */
   wearPct: number;
   coldPressureKpa: number;
+}
+
+/** Zeit fuer einen einzelnen Sektor in dieser Session, siehe calc/sectors.ts. */
+export interface SectorResult {
+  num: number;
+  /** Letzte gemessene Zeit fuer diesen Sektor. `null`, solange er noch nicht einmal durchfahren wurde. */
+  lastSec: number | null;
+  /** Schnellste gemessene Zeit fuer diesen Sektor in dieser Session. */
+  bestSec: number | null;
+  /** `lastSec` ist zugleich die schnellste Messung - fuer die gruene Faerbung im Sektor-Overlay. */
+  isPersonalBest: boolean;
 }
 
 /**
@@ -184,6 +220,10 @@ export interface PlayerState {
    * das Zustand ueber mehrere Ticks braucht.
    */
   lastLapTimesSec: number[];
+  /** Ein Eintrag pro Sektor aus `SessionState.sectors`, gleiche Reihenfolge. `[]` ohne definierte Sektoren. */
+  sectorTimes: SectorResult[];
+  /** Der gerade laufende Sektor - `null` ohne definierte Sektoren. */
+  currentSector: { num: number; elapsedSec: number } | null;
 }
 
 // UNSICHER: Enum-Werte nur fuer Rain-faehige Inhalte belastbar, sonst

@@ -37,17 +37,18 @@ Startet Electron im Dev-Modus mit Hot-Reload und verbindet sich mit einer
 laufenden iRacing-Instanz. Zuerst erscheint ein Auswahl-Fenster mit einem
 Layout-**Profil** (Dropdown oben, z.B. "Standard", "Oval", "Formel" - je
 eigene Overlay-Auswahl UND eigene Fensterpositionen) und Checkboxen fuer
-die zehn Overlays (Relative, Standings, Fuel, Inputs, Radar, Delta,
-Laptimes, Session-Timer, Weather, Flags) - erst ein Klick auf "Start"
-oeffnet die angehakten Fenster: transparent, always-on-top, standardmaessig
-klickdurchlaessig. Ueber "+" laesst sich ein neues Profil anlegen (startet
-mit allen Overlays angehakt), "✎" benennt das aktuelle um, "🗑" loescht es
-(mindestens eines bleibt immer erhalten). Ein Profilwechsel schliesst alle
-offenen Fenster und oeffnet die Auswahl des neuen Profils frisch - Fenster
-lassen sich nicht live zwischen Profilen "umhaengen". Profile + Auswahl
-werden gespeichert (`%APPDATA%/iracing-overlay/layouts/profiles.json`) und
-beim naechsten Start vorausgewaehlt; beim allerersten Start gibt es ein
-Profil "Standard" mit allen zehn Overlays angehakt. Ueber den Tray-Eintrag
+die zwoelf Overlays (Relative, Standings, Fuel, Inputs, Radar, Delta,
+Laptimes, Reifen, Sektoren, Session-Timer, Weather, Flags) - erst ein Klick
+auf "Start" oeffnet die angehakten Fenster: transparent, always-on-top,
+standardmaessig klickdurchlaessig. Ueber "+" laesst sich ein neues Profil
+anlegen (startet mit allen Overlays angehakt), "✎" benennt das aktuelle um,
+"🗑" loescht es (mindestens eines bleibt immer erhalten). Ein Profilwechsel
+schliesst alle offenen Fenster und oeffnet die Auswahl des neuen Profils
+frisch - Fenster lassen sich nicht live zwischen Profilen "umhaengen".
+Profile + Auswahl werden gespeichert
+(`%APPDATA%/iracing-overlay/layouts/profiles.json`) und beim naechsten
+Start vorausgewaehlt; beim allerersten Start gibt es ein Profil "Standard"
+mit allen zwoelf Overlays angehakt. Ueber den Tray-Eintrag
 "Overlays auswaehlen..." laesst sich das Fenster jederzeit erneut oeffnen,
 um Profil oder Auswahl zu aendern, ohne die App neu zu starten.
 `Strg+Alt+E` schaltet einen Edit-Modus um (gelber Rahmen). Im Edit-Modus
@@ -179,19 +180,21 @@ src/
                  shared/           Overlay-uebergreifend: WS-Client, Formatierung,
                                     Edit-Modus-Verdrahtung, Basis-CSS
                  launcher/         Auswahl-Fenster: Profil + welche Overlays sollen an sein
-                 relative/         Autos vor/hinter dem Spieler (Meilenstein 2)
+                 relative/         Autos vor/hinter dem Spieler (Meilenstein 2), optionale Extra-Spalten (Reifenmischung, Sektor-Vergleich) per Zahnrad im Edit-Modus
                  standings/        Session-Wertung nach Klasse (Meilenstein 4)
                  fuel/             Verbrauch, Restrunden, Nachtankmenge (Meilenstein 4)
                  inputs/           Gas/Bremse/Lenkung als Graph, Gang+Drehzahl (Meilenstein 5)
                  radar/            Naehe-Warnung + Autos in der Umgebung (Meilenstein 5)
                  delta/            Abstand zur eigenen Bestzeit (Meilenstein 6)
                  laptimes/         Balkendiagramm der letzten 5 Rundenzeiten
+                 tires/            Reifentemperatur/-verschleiss/-druck pro Ecke
+                 sectors/          Sektorzeiten, live + Session-Bestzeit pro Sektor
                  timer/            Session-Countdown, Runden/Zeit (Meilenstein 6)
                  weather/          Luft-/Streckentemperatur, Nasszustand (Meilenstein 6)
                  flags/            Aktive Streckenflaggen (Meilenstein 6)
   data/        Datenlayer, eigenstaendig lauffaehig ohne Electron:
                  types.ts        normalisiertes Modell
-                 calc/            reine Funktionen (Relative-Gap, Fuel-Planung, Standings, Rundenzeiten-Historie), getestet
+                 calc/            reine Funktionen (Relative-Gap, Fuel-Planung, Standings, Rundenzeiten-/Sektorzeiten-Historie), getestet
                  normalize/       SDK-Rohdaten -> normalisiertes Modell
                  mock/            simulierte Telemetrie ohne iRacing
                  server/          WebSocket-Broadcast
@@ -220,7 +223,8 @@ npx vitest run
 ```
 
 Testet die reinen Berechnungsfunktionen (`src/data/calc/`): Relative-Gap,
-Fuel-Tracking/-Planung, Standings-Gruppierung, Rundenzeiten-Historie.
+Fuel-Tracking/-Planung, Standings-Gruppierung, Rundenzeiten-Historie,
+Sektorzeiten-Historie.
 
 ## Radar: bewusste Design-Entscheidung
 
@@ -237,6 +241,45 @@ Die Lenkwinkel-Linie im Inputs-Graph ist aus demselben Grund eine
 Naeherung: `SteeringWheelAngle` kommt ohne das tatsaechliche Maximum des
 jeweiligen Fahrzeugs/Lenkrads, `inputs/main.ts` nimmt einen festen,
 plausiblen Bereich (±3.5 rad) an statt einen exakten Wert vorzutaeuschen.
+
+Die Temperatur-Faerbung im Reifen-Overlay ist ebenfalls eine Naeherung:
+das SDK liefert kein "optimales" Temperaturfenster pro Reifen/Fahrzeug,
+`tires/main.ts` nimmt feste, fuer Rennslicks plausible Grenzen (< 70°C
+kalt, 70–110°C optimal, > 110°C heiss) an.
+
+## Sektorzeiten: berechnet, nicht vom SDK geliefert
+
+Das SDK liefert nur die Sektor**grenzen** (`SplitTimeInfo.Sectors` -
+`SectorNum` + `SectorStartPct`, wo ein Sektor auf der Runde beginnt),
+keine fertigen Sektor**zeiten**. `calc/sectors.ts` (`SectorTracker`,
+analog zu `FuelTracker`/`LapTimeTracker`) beobachtet, wann `lapDistPct`
+eine Grenze ueberquert, und misst die vergangene Session-Zeit seit der
+letzten Ueberquerung - inkl. Session-Bestzeit pro Sektor fuer die gruene
+Faerbung im Overlay. Strecken ohne definierte Sektoren (manche
+Ovale/Testtracks) zeigen das Overlay entsprechend leer/ausgeblendet.
+
+`MultiCarSectorTracker` (selbe Datei) haelt das fuer **jedes** Auto vor,
+nicht nur den Spieler - `CarIdxLapDistPct` gibt es fuer jedes Auto, die
+Session-Zeit ist fuer alle dieselbe globale Uhr. Grundlage fuer den
+Sektor-Vergleich im Relative-Overlay, siehe unten.
+
+## Relative: optionale Extra-Spalten
+
+Ueber das Zahnrad im Header (nur im Edit-Modus sichtbar/klickbar, wie der
+Resize-Griff - das Fenster ist sonst klickdurchlaessig) lassen sich zwei
+Spalten dazuschalten, Einstellung bleibt im Browser-Storage des Fensters
+gespeichert:
+
+- **Reifenmischung** - `CarIdxTireCompound`, fuer jedes Auto sichtbar
+  (anders als Verschleiss/Temperatur/Druck, die das SDK nur fuers eigene
+  Auto liefert, siehe Reifen-Overlay oben). Nur eine rohe Nummer, keine
+  Klartext-Zuordnung wie "Weich"/"Hart" - die liefert das SDK nicht. In
+  Serien mit nur einer Mischung zeigt die Spalte fuer alle denselben Wert.
+- **Sektor-Δ** - vergleicht jede Zeile im letzten von *mir* abgeschlossenen
+  Sektor gegen meine eigene Zeit fuer denselben Streckenabschnitt (nicht
+  gegen die jeweils eigene letzte Runde der Zeile - bei Autos mit groesserem
+  Abstand waere das nicht derselbe Streckenabschnitt). Gruen = die Zeile war
+  dort schneller als ich, Rot = langsamer.
 
 ## Track Map: bewusst zurueckgestellt
 

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>Sektoren</title>
+    <link rel="stylesheet" href="sectors.css" />
+  </head>
+  <body>
+    <div class="widget sectors" id="widget">
+      <div class="widget__header">
+        <span>Sektoren</span>
+      </div>
+      <div class="widget__status" id="status">Verbinde mit der Bridge ...</div>
+      <div class="sectors__body is-hidden" id="body">
+        <div class="sectors__row sectors__row--live" id="live-row">
+          <span class="sectors__num" id="live-num"></span>
+          <span class="sectors__time" id="live-time"></span>
+        </div>
+        <ul class="sectors__list" id="list"></ul>
+      </div>
+      <div class="widget__resize-grip" id="resize-grip"></div>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

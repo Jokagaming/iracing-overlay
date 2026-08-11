@@ -11,6 +11,14 @@ import type { BridgeMessage, CarLeftRight, Driver, DriverRosterEntry, SessionSta
 import type { DataSource } from '../connector.js';
 import { FuelTracker } from '../calc/fuel.js';
 import { LapTimeTracker } from '../calc/laptimes.js';
+import { MultiCarSectorTracker } from '../calc/sectors.js';
+
+/** Drei gleich lange Sektoren, fuer die Demo - eine echte Strecke koennte beliebig viele in beliebigen Abstaenden haben. */
+const SECTORS = [
+  { num: 1, startPct: 0 },
+  { num: 2, startPct: 0.33 },
+  { num: 3, startPct: 0.66 },
+];
 
 const TRACK_LENGTH_M = 5793;
 const LAP_TIME_BASE = 103.5;
@@ -41,6 +49,8 @@ interface MockCar {
   number: string;
   carName: string;
   iRating: number;
+  /** Rohe Mischungs-Nummer wie beim echten SDK (`CarIdxTireCompound`) - nur zur Demo variiert, keine echte Bedeutung. */
+  tireCompound: number;
 }
 
 /** Deterministischer Zufallszahlengenerator (mulberry32), fuer reproduzierbare Demo-Daten. */
@@ -61,6 +71,7 @@ export class MockSource implements DataSource {
   private readonly startedAt = performance.now();
   private readonly fuelTracker = new FuelTracker();
   private readonly lapTimeTracker = new LapTimeTracker();
+  private readonly sectorTracker = new MultiCarSectorTracker();
   private seq = 0;
   private sessionSent = false;
 
@@ -81,10 +92,14 @@ export class MockSource implements DataSource {
         number: String(1 + Math.floor(rng() * 98)),
         carName: carClass.cars[idx % carClass.cars.length]!,
         iRating: 1200 + Math.floor(rng() * 6600),
+        // Ein Drittel des Feldes auf der Alternativ-Mischung, fuer eine
+        // sichtbar gemischte Demo statt einer platten Konstante.
+        tireCompound: idx % 3 === 0 ? 1 : 0,
       };
     });
 
     this.sessionMessage = { type: 'session', ...this.buildSessionState() };
+    this.sectorTracker.setBoundaries(SECTORS);
   }
 
   get lastSessionMessage(): BridgeMessage | null {
@@ -147,6 +162,7 @@ export class MockSource implements DataSource {
       paceCarIdx: null,
       estLapTimeSec: LAP_TIME_BASE,
       playerCar: { idleRpm: 1200, redLineRpm: 7800, shiftLightShiftRpm: 7400, shiftLightBlinkRpm: 7700 },
+      sectors: SECTORS,
     };
   }
 
@@ -207,8 +223,17 @@ export class MockSource implements DataSource {
         lastLapSec: lap > 1 ? car.lapTime * (0.985 + 0.03 * Math.sin(car.idx * 7 + lap * 3)) : null,
         bestLapSec: lap > 1 ? car.lapTime * 0.99 : null,
         gapToLeaderSec,
+        tireCompound: car.tireCompound,
+        sectorTimes: [],
       };
     });
+
+    // Sektorzeiten fuer jedes sichtbare Auto - ermoeglicht den
+    // Sektor-Vergleich gegen Vorder-/Hintermann im Relative-Overlay.
+    for (const driver of drivers) {
+      this.sectorTracker.update(driver.carIdx, driver.lapDistPct, elapsedSec);
+      driver.sectorTimes = this.sectorTracker.resultsFor(driver.carIdx);
+    }
 
     const playerDriver = drivers.find((d) => d.carIdx === PLAYER_IDX)!;
     this.lapTimeTracker.update(playerDriver.lap, playerDriver.lastLapSec);
@@ -232,6 +257,9 @@ export class MockSource implements DataSource {
     this.fuelTracker.update(playerLap, fuelLevelLiters, false);
     const usePerLapLiters = this.fuelTracker.averagePerLapLiters;
     const carLeftRight = this.simulateCarLeftRight(progress);
+
+    const currentSectorNum = this.sectorTracker.currentSectorNumFor(PLAYER_IDX);
+    const currentSectorElapsedSec = this.sectorTracker.currentElapsedSecFor(PLAYER_IDX, elapsedSec);
 
     return {
       seq: this.seq,
@@ -268,6 +296,11 @@ export class MockSource implements DataSource {
         },
         carLeftRight,
         lastLapTimesSec: this.lapTimeTracker.lastLaps,
+        sectorTimes: this.sectorTracker.resultsFor(PLAYER_IDX),
+        currentSector:
+          currentSectorNum != null && currentSectorElapsedSec != null
+            ? { num: currentSectorNum, elapsedSec: currentSectorElapsedSec }
+            : null,
       },
       weather: { airTempC: 24, trackTempC: 34.5, humidityPct: 0.45, trackWetness: 'dry' },
     };

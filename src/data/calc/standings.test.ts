@@ -25,6 +25,8 @@ function makeDriver(overrides: Partial<Driver> & { carIdx: number }): Driver {
     lastLapSec: null,
     bestLapSec: null,
     gapToLeaderSec: 0,
+    tireCompound: null,
+    sectorTimes: [],
     ...overrides,
   };
 }
@@ -54,6 +56,8 @@ function makeFrame(drivers: Driver[]): TelemetryFrame {
       },
       carLeftRight: 'clear',
       lastLapTimesSec: [],
+      sectorTimes: [],
+      currentSector: null,
     },
     weather: { airTempC: 20, trackTempC: 30, humidityPct: 0.5, trackWetness: 'dry' },
   };

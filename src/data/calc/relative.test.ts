@@ -27,6 +27,8 @@ function makeDriver(overrides: Partial<Driver> & { carIdx: number }): Driver {
     lastLapSec: null,
     bestLapSec: null,
     gapToLeaderSec: null,
+    tireCompound: null,
+    sectorTimes: [],
     ...overrides,
   };
 }
@@ -68,6 +70,8 @@ function makeFrame(cars: Array<{ idx: number; estTime: number; lap?: number; isP
       },
       carLeftRight: 'clear',
       lastLapTimesSec: [],
+      sectorTimes: [],
+      currentSector: null,
     },
     weather: { airTempC: 20, trackTempC: 30, humidityPct: 0.5, trackWetness: 'dry' },
   };
