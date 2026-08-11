@@ -2,15 +2,17 @@ name: Release
 
 # Baut den Windows-Installer auf einem echten Windows-Runner (nicht per
 # Cross-Build von Linux aus) und laedt ihn direkt als GitHub Release hoch -
-# ausgeloest durch einen Versions-Tag (z.B. `v1.1.0`). electron-builder
-# rebuildet dabei automatisch @irsdk-node/native gegen die gepackte
-# Electron-Node-ABI (siehe README, "Installer bauen"); das braucht die auf
-# windows-latest vorinstallierten Build-Tools (Python, MSVC), deshalb kein
-# Cross-Compile von einem anderen Betriebssystem aus.
+# ausgeloest durch einen Versions-Tag (z.B. `v1.1.0`) oder manuell ueber
+# "Run workflow" (workflow_dispatch). electron-builder rebuildet dabei
+# automatisch @irsdk-node/native gegen die gepackte Electron-Node-ABI
+# (siehe README, "Installer bauen"); das braucht die auf windows-latest
+# vorinstallierten Build-Tools (Python, MSVC), deshalb kein Cross-Compile
+# von einem anderen Betriebssystem aus.
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch: {}
 
 permissions:
   contents: write
@@ -34,6 +36,8 @@ jobs:
       # --publish always laedt Installer + latest.yml direkt als GitHub
       # Release zum aktuellen Tag hoch - electron-updater braucht beides,
       # um kuenftige Versionen zu erkennen (siehe src/main/autoUpdate.ts).
+      # Der Release-Tag/Name kommt dabei aus der Version in package.json,
+      # unabhaengig davon, ob dieser Lauf per Tag-Push oder manuell (workflow_dispatch) ausgeloest wurde.
       - run: npx electron-builder --win --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
