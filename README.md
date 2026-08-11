@@ -180,7 +180,7 @@ src/
                  shared/           Overlay-uebergreifend: WS-Client, Formatierung,
                                     Edit-Modus-Verdrahtung, Basis-CSS
                  launcher/         Auswahl-Fenster: Profil + welche Overlays sollen an sein
-                 relative/         Autos vor/hinter dem Spieler (Meilenstein 2)
+                 relative/         Autos vor/hinter dem Spieler (Meilenstein 2), optionale Extra-Spalten (Reifenmischung, Sektor-Vergleich) per Zahnrad im Edit-Modus
                  standings/        Session-Wertung nach Klasse (Meilenstein 4)
                  fuel/             Verbrauch, Restrunden, Nachtankmenge (Meilenstein 4)
                  inputs/           Gas/Bremse/Lenkung als Graph, Gang+Drehzahl (Meilenstein 5)
@@ -257,6 +257,29 @@ eine Grenze ueberquert, und misst die vergangene Session-Zeit seit der
 letzten Ueberquerung - inkl. Session-Bestzeit pro Sektor fuer die gruene
 Faerbung im Overlay. Strecken ohne definierte Sektoren (manche
 Ovale/Testtracks) zeigen das Overlay entsprechend leer/ausgeblendet.
+
+`MultiCarSectorTracker` (selbe Datei) haelt das fuer **jedes** Auto vor,
+nicht nur den Spieler - `CarIdxLapDistPct` gibt es fuer jedes Auto, die
+Session-Zeit ist fuer alle dieselbe globale Uhr. Grundlage fuer den
+Sektor-Vergleich im Relative-Overlay, siehe unten.
+
+## Relative: optionale Extra-Spalten
+
+Ueber das Zahnrad im Header (nur im Edit-Modus sichtbar/klickbar, wie der
+Resize-Griff - das Fenster ist sonst klickdurchlaessig) lassen sich zwei
+Spalten dazuschalten, Einstellung bleibt im Browser-Storage des Fensters
+gespeichert:
+
+- **Reifenmischung** - `CarIdxTireCompound`, fuer jedes Auto sichtbar
+  (anders als Verschleiss/Temperatur/Druck, die das SDK nur fuers eigene
+  Auto liefert, siehe Reifen-Overlay oben). Nur eine rohe Nummer, keine
+  Klartext-Zuordnung wie "Weich"/"Hart" - die liefert das SDK nicht. In
+  Serien mit nur einer Mischung zeigt die Spalte fuer alle denselben Wert.
+- **Sektor-Δ** - vergleicht jede Zeile im letzten von *mir* abgeschlossenen
+  Sektor gegen meine eigene Zeit fuer denselben Streckenabschnitt (nicht
+  gegen die jeweils eigene letzte Runde der Zeile - bei Autos mit groesserem
+  Abstand waere das nicht derselbe Streckenabschnitt). Gruen = die Zeile war
+  dort schneller als ich, Rot = langsamer.
 
 ## Track Map: bewusst zurueckgestellt
 

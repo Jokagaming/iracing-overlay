@@ -25,6 +25,8 @@ function makeDriver(overrides: Partial<Driver> & { carIdx: number }): Driver {
     lastLapSec: null,
     bestLapSec: null,
     gapToLeaderSec: 0,
+    tireCompound: null,
+    sectorTimes: [],
     ...overrides,
   };
 }

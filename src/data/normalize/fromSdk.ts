@@ -230,6 +230,7 @@ function buildDrivers(t: TelemetryVarList, roster: DriverRosterEntry[], playerCa
   const lastLap = arrNum(t.CarIdxLastLapTime);
   const bestLap = arrNum(t.CarIdxBestLapTime);
   const gapToLeader = arrNum(t.CarIdxF2Time);
+  const tireCompound = arrNum(t.CarIdxTireCompound);
 
   return roster
     .filter((entry) => !entry.isSpectator)
@@ -248,6 +249,10 @@ function buildDrivers(t: TelemetryVarList, roster: DriverRosterEntry[], playerCa
         lastLapSec: lastLap[i] > 0 ? lastLap[i]! : null,
         bestLapSec: bestLap[i] > 0 ? bestLap[i]! : null,
         gapToLeaderSec: gapToLeader[i] ?? null,
+        tireCompound: tireCompound[i] != null && tireCompound[i]! >= 0 ? tireCompound[i]! : null,
+        // Wird vom Connector nach dem Aufruf hier befuellt - siehe
+        // calc/sectors.ts, braucht Zustand ueber mehrere Ticks und alle Autos.
+        sectorTimes: [],
       };
     });
 }

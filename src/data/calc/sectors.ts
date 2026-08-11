@@ -77,3 +77,47 @@ export class SectorTracker {
     return this.sectorStartTimeSec != null ? sessionTimeSec - this.sectorStartTimeSec : null;
   }
 }
+
+/**
+ * Haelt einen {@link SectorTracker} pro Auto vor - fuer den Sektor-Vergleich
+ * im Relative-Overlay braucht es nicht nur die Sektorzeiten des Spielers,
+ * sondern auch die der Autos vor/hinter ihm. `lapDistPct` ist fuer jedes
+ * Auto ohnehin schon Teil der Telemetrie (`CarIdxLapDistPct`); die
+ * Session-Zeit ist fuer alle Autos dieselbe globale Uhr.
+ */
+export class MultiCarSectorTracker {
+  private boundaries: SectorBoundary[] = [];
+  private readonly trackers = new Map<number, SectorTracker>();
+
+  setBoundaries(boundaries: SectorBoundary[]): void {
+    this.boundaries = boundaries;
+    for (const tracker of this.trackers.values()) tracker.setBoundaries(boundaries);
+  }
+
+  private trackerFor(carIdx: number): SectorTracker {
+    let tracker = this.trackers.get(carIdx);
+    if (!tracker) {
+      tracker = new SectorTracker();
+      tracker.setBoundaries(this.boundaries);
+      this.trackers.set(carIdx, tracker);
+    }
+    return tracker;
+  }
+
+  /** Einmal pro Tick und Auto aufrufen. */
+  update(carIdx: number, lapDistPct: number, sessionTimeSec: number): void {
+    this.trackerFor(carIdx).update(lapDistPct, sessionTimeSec);
+  }
+
+  resultsFor(carIdx: number): SectorResult[] {
+    return this.trackers.get(carIdx)?.results ?? [];
+  }
+
+  currentSectorNumFor(carIdx: number): number | null {
+    return this.trackers.get(carIdx)?.currentSectorNum ?? null;
+  }
+
+  currentElapsedSecFor(carIdx: number, sessionTimeSec: number): number | null {
+    return this.trackers.get(carIdx)?.currentElapsedSec(sessionTimeSec) ?? null;
+  }
+}

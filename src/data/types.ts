@@ -64,6 +64,21 @@ export interface Driver {
    * geprueft ist.
    */
   gapToLeaderSec: number | null;
+  /**
+   * `CarIdxTireCompound` - fuer jedes Auto sichtbar (anders als Verschleiss/
+   * Temperatur/Druck, die das SDK nur fuers eigene Auto liefert, siehe
+   * PlayerState.tires). Nur eine rohe Mischungs-Nummer, das SDK liefert
+   * keine Klartext-Zuordnung (z.B. "Weich"/"Hart") dazu - in Serien mit nur
+   * einer Mischung ist der Wert fuer alle gleich. `null` ohne Wert vom SDK.
+   */
+  tireCompound: number | null;
+  /**
+   * Sektorzeiten dieses Autos in dieser Session - wie
+   * `PlayerState.sectorTimes`, aber fuer jedes Auto berechnet (siehe
+   * calc/sectors.ts, `MultiCarSectorTracker`). Ermoeglicht den
+   * Sektor-Vergleich gegen Vorder-/Hintermann im Relative-Overlay.
+   */
+  sectorTimes: SectorResult[];
 }
 
 export interface TrackInfo {

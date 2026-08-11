@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SectorTracker } from './sectors.js';
+import { MultiCarSectorTracker, SectorTracker } from './sectors.js';
 
 const BOUNDARIES = [
   { num: 1, startPct: 0 },
@@ -61,5 +61,43 @@ describe('SectorTracker', () => {
     const byNum = new Map(tracker.results.map((r) => [r.num, r]));
     expect(byNum.get(1)?.lastSec).toBeNull();
     expect(byNum.get(1)?.bestSec).toBeNull();
+  });
+});
+
+describe('MultiCarSectorTracker', () => {
+  it('trackt mehrere Autos unabhaengig voneinander', () => {
+    const tracker = new MultiCarSectorTracker();
+    tracker.setBoundaries(BOUNDARIES);
+
+    // Auto 1: schneller Sektor 1
+    tracker.update(1, 0, 0);
+    tracker.update(1, 0.33, 8);
+    // Auto 2: langsamerer Sektor 1
+    tracker.update(2, 0, 0);
+    tracker.update(2, 0.33, 12);
+
+    const byNum1 = new Map(tracker.resultsFor(1).map((r) => [r.num, r]));
+    const byNum2 = new Map(tracker.resultsFor(2).map((r) => [r.num, r]));
+    expect(byNum1.get(1)?.lastSec).toBe(8);
+    expect(byNum2.get(1)?.lastSec).toBe(12);
+  });
+
+  it('liefert leere Ergebnisse fuer ein noch nie gesehenes Auto', () => {
+    const tracker = new MultiCarSectorTracker();
+    tracker.setBoundaries(BOUNDARIES);
+    expect(tracker.resultsFor(99)).toEqual([]);
+    expect(tracker.currentSectorNumFor(99)).toBeNull();
+  });
+
+  it('gibt neu geaenderte Sektorgrenzen an bereits bekannte Autos weiter', () => {
+    const tracker = new MultiCarSectorTracker();
+    tracker.setBoundaries(BOUNDARIES);
+    tracker.update(1, 0, 0);
+
+    tracker.setBoundaries([{ num: 1, startPct: 0 }]);
+    tracker.update(1, 0.5, 5);
+
+    // Nur noch ein Sektor definiert - das Auto darf keine Ergebnisse fuer die alten Sektoren 2/3 mehr zeigen.
+    expect(tracker.resultsFor(1).map((r) => r.num)).toEqual([1]);
   });
 });
