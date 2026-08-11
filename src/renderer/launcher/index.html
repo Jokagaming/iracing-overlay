@@ -9,6 +9,19 @@
     <div class="launcher">
       <h1>Overlays auswaehlen</h1>
       <p class="launcher__hint">Haken setzen, was angezeigt werden soll, dann auf Start klicken.</p>
+
+      <div class="launcher__profile-row">
+        <select class="launcher__profile-select" id="profile-select"></select>
+        <button class="launcher__icon-btn" id="profile-new" type="button" title="Neues Profil">+</button>
+        <button class="launcher__icon-btn" id="profile-rename" type="button" title="Umbenennen">&#9998;</button>
+        <button class="launcher__icon-btn" id="profile-delete" type="button" title="Profil loeschen">&#128465;</button>
+      </div>
+      <div class="launcher__profile-edit is-hidden" id="profile-edit">
+        <input class="launcher__profile-input" id="profile-edit-name" type="text" placeholder="Profilname" />
+        <button class="launcher__link" id="profile-edit-confirm" type="button">OK</button>
+        <button class="launcher__link" id="profile-edit-cancel" type="button">Abbrechen</button>
+      </div>
+
       <ul class="launcher__list" id="list"></ul>
       <div class="launcher__actions">
         <button class="launcher__link" id="select-all" type="button">Alle</button>

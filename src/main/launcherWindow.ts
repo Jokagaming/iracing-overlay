@@ -1,14 +1,15 @@
 /**
  * Auswahl-Fenster: normales, sichtbares Fenster (kein Overlay - Rahmen,
- * Taskleisteneintrag, schliessbar), in dem die Checkboxen fuer "welches
- * Overlay soll an sein" angezeigt werden. Erst ein Klick auf "Start" loest
- * `onStart` aus und damit das tatsaechliche Oeffnen der ausgewaehlten
- * Overlay-Fenster in main/index.ts - vorher ist ausser diesem Fenster
- * nichts sichtbar.
+ * Taskleisteneintrag, schliessbar), in dem sich Layout-Profil und die
+ * Checkboxen fuer "welches Overlay soll an sein" auswaehlen lassen. Erst
+ * ein Klick auf "Start" loest `onStart` aus und damit das tatsaechliche
+ * Oeffnen der ausgewaehlten Overlay-Fenster in main/index.ts - vorher ist
+ * ausser diesem Fenster nichts sichtbar.
  *
  * Ueber den Tray-Eintrag "Overlays auswaehlen..." laesst sich dasselbe
- * Fenster jederzeit erneut oeffnen, um die Auswahl zu aendern (Overlays
- * nachtraeglich dazu- oder abschalten), ohne die App neu zu starten.
+ * Fenster jederzeit erneut oeffnen, um Auswahl oder Profil zu aendern
+ * (Overlays nachtraeglich dazu- oder abschalten, zwischen Profilen wie
+ * "Oval"/"Formel" wechseln), ohne die App neu zu starten.
  */
 
 import { BrowserWindow, ipcMain } from 'electron';
@@ -19,11 +20,22 @@ export interface LauncherOverlayEntry {
   label: string;
 }
 
+export interface LauncherProfile {
+  id: string;
+  name: string;
+  selectedOverlayIds: string[];
+}
+
 export interface LauncherOptions {
   overlays: LauncherOverlayEntry[];
-  /** Liefert die aktuell gewuenschte Checkbox-Vorauswahl - bereits laufende Overlays, sonst die gespeicherte/Standard-Auswahl. */
-  getSelected: () => string[];
-  onStart: (selectedIds: string[]) => void;
+  getProfiles: () => LauncherProfile[];
+  getActiveProfileId: () => string;
+  /** Gerade offene Overlay-Fenster - nur fuer das aktive Profil aussagekraeftig (siehe renderer/launcher/main.ts). */
+  getRunningOverlayIds: () => string[];
+  onCreateProfile: (name: string) => Promise<LauncherProfile>;
+  onRenameProfile: (profileId: string, name: string) => void;
+  onDeleteProfile: (profileId: string) => Promise<{ profiles: LauncherProfile[]; activeProfileId: string }>;
+  onStart: (profileId: string, selectedIds: string[]) => void;
 }
 
 let win: BrowserWindow | null = null;
@@ -42,7 +54,7 @@ export function createLauncherWindow(opts: LauncherOptions): BrowserWindow {
 
   win = new BrowserWindow({
     width: 360,
-    height: 520,
+    height: 560,
     resizable: false,
     center: true,
     title: 'iRacing Overlay',
@@ -78,11 +90,24 @@ export function showLauncherWindow(): void {
 }
 
 ipcMain.handle('launcher:get-config', () => {
-  if (!options) return { overlays: [], selected: [] };
-  return { overlays: options.overlays, selected: options.getSelected() };
+  if (!options) return { overlays: [], profiles: [], activeProfileId: '', runningOverlayIds: [] };
+  return {
+    overlays: options.overlays,
+    profiles: options.getProfiles(),
+    activeProfileId: options.getActiveProfileId(),
+    runningOverlayIds: options.getRunningOverlayIds(),
+  };
 });
 
-ipcMain.on('launcher:start', (_event, selectedIds: string[]) => {
-  options?.onStart(selectedIds);
+ipcMain.handle('launcher:create-profile', (_event, name: string) => options?.onCreateProfile(name));
+
+ipcMain.on('launcher:rename-profile', (_event, profileId: string, name: string) => {
+  options?.onRenameProfile(profileId, name);
+});
+
+ipcMain.handle('launcher:delete-profile', (_event, profileId: string) => options?.onDeleteProfile(profileId));
+
+ipcMain.on('launcher:start', (_event, profileId: string, selectedIds: string[]) => {
+  options?.onStart(profileId, selectedIds);
   win?.close();
 });

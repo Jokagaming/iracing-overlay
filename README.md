@@ -34,23 +34,37 @@ npm run dev
 ```
 
 Startet Electron im Dev-Modus mit Hot-Reload und verbindet sich mit einer
-laufenden iRacing-Instanz. Zuerst erscheint ein Auswahl-Fenster mit
-Checkboxen fuer die zehn Overlays (Relative, Standings, Fuel, Inputs,
-Radar, Delta, Laptimes, Session-Timer, Weather, Flags) - erst ein Klick auf "Start"
+laufenden iRacing-Instanz. Zuerst erscheint ein Auswahl-Fenster mit einem
+Layout-**Profil** (Dropdown oben, z.B. "Standard", "Oval", "Formel" - je
+eigene Overlay-Auswahl UND eigene Fensterpositionen) und Checkboxen fuer
+die zehn Overlays (Relative, Standings, Fuel, Inputs, Radar, Delta,
+Laptimes, Session-Timer, Weather, Flags) - erst ein Klick auf "Start"
 oeffnet die angehakten Fenster: transparent, always-on-top, standardmaessig
-klickdurchlaessig. Die Auswahl wird gespeichert
-(`%APPDATA%/iracing-overlay/layouts/selection.json`) und beim naechsten
-Start vorausgewaehlt; beim allerersten Start sind alle neun angehakt. Ueber
-den Tray-Eintrag "Overlays auswaehlen..." laesst sich das Fenster jederzeit
-erneut oeffnen, um einzelne Overlays nachtraeglich an- oder abzuschalten,
-ohne die App neu zu starten. `Strg+Alt+E` schaltet einen Edit-Modus um
-(gelber Rahmen). Im Edit-Modus laesst sich jedes Fenster einzeln per Ziehen
-verschieben (auch auf einen anderen Monitor - das *ist* die
-Monitor-Auswahl, es gibt dafuer kein eigenes Dropdown) und per Eck-Griff
-unten rechts in der Groesse aendern. Beides wird automatisch gespeichert
-(`%APPDATA%/iracing-overlay/layouts/default.json`) und beim naechsten Start
+klickdurchlaessig. Ueber "+" laesst sich ein neues Profil anlegen (startet
+mit allen Overlays angehakt), "✎" benennt das aktuelle um, "🗑" loescht es
+(mindestens eines bleibt immer erhalten). Ein Profilwechsel schliesst alle
+offenen Fenster und oeffnet die Auswahl des neuen Profils frisch - Fenster
+lassen sich nicht live zwischen Profilen "umhaengen". Profile + Auswahl
+werden gespeichert (`%APPDATA%/iracing-overlay/layouts/profiles.json`) und
+beim naechsten Start vorausgewaehlt; beim allerersten Start gibt es ein
+Profil "Standard" mit allen zehn Overlays angehakt. Ueber den Tray-Eintrag
+"Overlays auswaehlen..." laesst sich das Fenster jederzeit erneut oeffnen,
+um Profil oder Auswahl zu aendern, ohne die App neu zu starten.
+`Strg+Alt+E` schaltet einen Edit-Modus um (gelber Rahmen). Im Edit-Modus
+laesst sich jedes Fenster einzeln per Ziehen verschieben (auch auf einen
+anderen Monitor - das *ist* die Monitor-Auswahl, es gibt dafuer kein
+eigenes Dropdown) und per Eck-Griff unten rechts in der Groesse aendern.
+Beides wird automatisch pro Profil gespeichert
+(`%APPDATA%/iracing-overlay/layouts/<profil-id>.json`, das Profil
+"Standard" nutzt weiterhin `default.json`) und beim naechsten Start
 wiederhergestellt - haengt der gespeicherte Monitor nicht mehr dran, faellt
 die Position auf den Standardwert zurueck.
+
+Automatisches Umschalten des Profils anhand des gerade gefahrenen
+Autos/der Serie/des Session-Typs ist bewusst noch nicht gebaut - das waere
+ein groesseres, eigenstaendiges Stueck Arbeit (Session-Aenderung erkennen,
+UX fuer "Layout hat sich gerade unter dir geaendert"). Aktuell ist der
+Profilwechsel manuell ueber den Launcher.
 
 Ohne laufendes iRacing testen:
 
@@ -141,7 +155,7 @@ Zusatzpakete noetig) - dieselben Farben wie die Overlays selbst
 | 0 | Electron-Grundgerued, transparentes Always-on-Top-Testfenster, Hotkey togglet Klickdurchlaessigkeit | **fertig, verifiziert** (Klick bei AN geht durch, bei Edit-Modus kommt er an) |
 | 1 | Datenlayer eigenstaendig: SDK-Connector, Mock-Provider, Normalizer, WebSocket-Server | **fertig, verifiziert per Demo-Modus** (Live-Anbindung noch nicht gegen echtes iRacing getestet, siehe unten) |
 | 2 | Erstes echtes Overlay (Relative) in Electron eingebunden | **fertig, verifiziert** (Datenlayer laeuft im Main-Process, Relative-Fenster zeigt korrekt sortierte Zeilen, Edit-Modus-Hotkey funktioniert am echten Overlay) |
-| 3 | Edit-Modus wird nutzbar (Verschieben, Groesse aendern), Layout-Persistenz, Monitor-Auswahl | **teilweise fertig, verifiziert** - Auto-Switch nach Auto/Serie/Session-Typ fehlt noch, siehe unten |
+| 3 | Edit-Modus wird nutzbar (Verschieben, Groesse aendern), Layout-Persistenz, Monitor-Auswahl, mehrere benannte Profile | **fertig, verifiziert per Typecheck/Build** - automatisches Umschalten nach Auto/Serie/Session-Typ ist manuell statt automatisch, siehe unten |
 | 4 | Standings + Fuel-Rechner | **fertig, verifiziert per Demo-Modus** - SQLite-Rundenzeiten bewusst zurueckgestellt (kein Verbraucher dafuer), siehe unten |
 | 5 | Input-Telemetrie-Graph + Radar | **fertig, verifiziert per Demo-Modus** - Radar zeigt bewusst keine geschaetzten Seitenpositionen anderer Autos, siehe unten |
 | 6 | Delta-Bar, Session-Timer, Weather, Flags | **fertig, verifiziert per Demo-Modus** - Track Map bewusst zurueckgestellt (SDK-Datengrundlage ungeklaert), siehe unten |
@@ -154,9 +168,9 @@ src/
   main/        Electron Main-Process
                  index.ts          App-Lifecycle, Hotkey, Fenster erzeugen
                  overlayWindow.ts  Fenster erzeugen, Drag/Resize, Persistenz verdrahten
-                 layoutStore.ts    Fenstergeometrie als JSON im Nutzerprofil
-                 selectionStore.ts Overlay-Auswahl (an/aus) als JSON im Nutzerprofil
-                 launcherWindow.ts Auswahl-Fenster: Checkboxen + Start
+                 layoutStore.ts    Fenstergeometrie als JSON, pro Profil eine Datei
+                 profileStore.ts   Layout-Profile (Name + Overlay-Auswahl) als JSON
+                 launcherWindow.ts Auswahl-Fenster: Profile verwalten, Checkboxen + Start
                  dataLayer.ts      startet den Datenlayer im Main-Process
                  tray.ts           System-Tray: Overlays auswaehlen, Edit-Modus, Beenden
                  resources.ts      findet Icons in Dev- und gepacktem Build
@@ -164,7 +178,7 @@ src/
   renderer/    ein Ordner pro Overlay/Fenster, je ein Vite-Eintrag
                  shared/           Overlay-uebergreifend: WS-Client, Formatierung,
                                     Edit-Modus-Verdrahtung, Basis-CSS
-                 launcher/         Auswahl-Fenster: welche Overlays sollen an sein
+                 launcher/         Auswahl-Fenster: Profil + welche Overlays sollen an sein
                  relative/         Autos vor/hinter dem Spieler (Meilenstein 2)
                  standings/        Session-Wertung nach Klasse (Meilenstein 4)
                  fuel/             Verbrauch, Restrunden, Nachtankmenge (Meilenstein 4)
@@ -322,10 +336,13 @@ Sollte beim naechsten Mal zuerst erneut gegengeprueft werden.
 - `irsdk-node`s Umgang mit fehlerhaft formatierter Session-YAML (Sonderzeichen
   in Fahrernamen, Team-Events) ist ungeprueft; IRSDKSharper (C#) patcht dafuer
   bekannte Faelle, ob `irsdk-node` das auch tut, ist offen.
-- Auto-Switch der Layouts nach Auto/Serie/Session-Typ (mehrere benannte
-  Profile) ist noch nicht gebaut - dafuer fehlt jede UI, mit der man
-  ueberhaupt mehrere Layouts anlegen und benennen koennte. Aktuell gibt es
-  genau ein Profil ("default"), das alle Overlay-Positionen haelt.
+- Mehrere benannte Layout-Profile (je eigene Overlay-Auswahl + eigene
+  Fensterpositionen) lassen sich jetzt im Launcher anlegen/umbenennen/
+  loeschen/wechseln - **automatisches** Umschalten anhand des gerade
+  gefahrenen Autos/der Serie/des Session-Typs ist bewusst noch nicht
+  gebaut (Session-Aenderung erkennen + UX fuer "Layout hat sich gerade
+  unter dir geaendert" waere ein eigenstaendiges, groesseres Stueck
+  Arbeit). Der Profilwechsel ist aktuell manuell.
 - Edit-Modus/Tray nach dem IPC-Umbau nicht interaktiv nachgeprueft (siehe
   "Performance" oben) - Eingabe-Simulation versagte in dieser Session
   systemweit, nicht nur fuer diese App.
