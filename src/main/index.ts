@@ -3,6 +3,8 @@ import type { BrowserWindow, Tray } from 'electron';
 import { DataLayer } from './dataLayer.js';
 import { createOverlayWindow, setEditMode } from './overlayWindow.js';
 import { createTray } from './tray.js';
+import { createLauncherWindow, showLauncherWindow } from './launcherWindow.js';
+import { loadSelection, saveSelection } from './selectionStore.js';
 
 const EDIT_MODE_HOTKEY = 'Control+Alt+E';
 const DATA_HOST = '127.0.0.1';
@@ -20,8 +22,24 @@ const OVERLAY_WINDOWS = [
   { id: 'flags', x: 620, y: 530, width: 160, height: 60 },
 ];
 
+// Deutsche Anzeigenamen fuer das Auswahl-Menue (launcherWindow.ts) - hat
+// sonst keinen Bezug zu OVERLAY_WINDOWS, nur ueber die id verknuepft.
+const OVERLAY_LABELS: Record<string, string> = {
+  relative: 'Relative (Autos vor/hinter mir)',
+  standings: 'Wertung',
+  fuel: 'Sprit',
+  inputs: 'Eingaben (Gas/Bremse/Lenkung)',
+  radar: 'Radar',
+  delta: 'Delta (Bestzeit-Abstand)',
+  timer: 'Session-Timer',
+  weather: 'Wetter',
+  flags: 'Flaggen',
+};
+
 const dataLayer = new DataLayer();
-let overlayWindows: BrowserWindow[] = [];
+// Nur die gerade offenen Overlay-Fenster, per id - der Launcher schaltet
+// einzelne davon an/aus, ohne die App neu zu starten.
+const overlayWindows = new Map<string, BrowserWindow>();
 let editMode = false;
 // Muss am Leben gehalten werden - ein garbage-collectes Tray-Objekt laesst
 // das Icon kommentarlos aus der Taskleiste verschwinden.
@@ -37,23 +55,61 @@ function parseRateArg(argv: string[]): number | undefined {
 
 function toggleEditMode(): void {
   editMode = !editMode;
-  setEditMode(overlayWindows, editMode);
+  setEditMode([...overlayWindows.values()], editMode);
   console.log(`[main] edit mode -> ${editMode}`);
+}
+
+async function openOverlay(id: string): Promise<void> {
+  const config = OVERLAY_WINDOWS.find((w) => w.id === id);
+  if (!config) return;
+  const win = await createOverlayWindow(config, () => dataLayer.getWelcomeMessages());
+  if (editMode) setEditMode([win], true);
+  overlayWindows.set(id, win);
+}
+
+/** Wird vom Launcher-Fenster mit der Checkbox-Auswahl aufgerufen: schliesst Abgewaehltes, oeffnet Neues, speichert die Auswahl. */
+async function applySelection(selectedIds: string[]): Promise<void> {
+  const selected = new Set(selectedIds);
+
+  for (const [id, win] of overlayWindows) {
+    if (!selected.has(id)) {
+      win.close();
+      overlayWindows.delete(id);
+    }
+  }
+
+  for (const id of selected) {
+    if (!overlayWindows.has(id)) await openOverlay(id);
+  }
+
+  await saveSelection([...selected]);
 }
 
 const DEFAULT_TELEMETRY_HZ = 20;
 
 app.whenReady().then(async () => {
-  overlayWindows = await Promise.all(
-    OVERLAY_WINDOWS.map((config) => createOverlayWindow(config, () => dataLayer.getWelcomeMessages())),
-  );
+  const savedSelection = await loadSelection();
+  // Erster Start (noch keine gespeicherte Auswahl): alle Overlays vorausgewaehlt.
+  const initialSelection = savedSelection ?? OVERLAY_WINDOWS.map((w) => w.id);
+
+  createLauncherWindow({
+    overlays: OVERLAY_WINDOWS.map((w) => ({ id: w.id, label: OVERLAY_LABELS[w.id] ?? w.id })),
+    getSelected: () => (overlayWindows.size > 0 ? [...overlayWindows.keys()] : initialSelection),
+    onStart: (selectedIds) => {
+      void applySelection(selectedIds);
+    },
+  });
 
   const registered = globalShortcut.register(EDIT_MODE_HOTKEY, toggleEditMode);
   if (!registered) {
     console.error(`[main] Hotkey ${EDIT_MODE_HOTKEY} konnte nicht registriert werden`);
   }
 
-  tray = createTray({ onToggleEditMode: toggleEditMode, isEditMode: () => editMode });
+  tray = createTray({
+    onToggleEditMode: toggleEditMode,
+    isEditMode: () => editMode,
+    onOpenLauncher: showLauncherWindow,
+  });
 
   // --demo laesst die App ohne laufendes iRacing testen, z.B. via
   // `npm run dev -- --demo` im electron-vite-Entwicklungsmodus.
@@ -66,9 +122,11 @@ app.whenReady().then(async () => {
     telemetryHz,
     // Direkt an die eigenen Fenster statt nur ueber WS - siehe
     // dataLayer.ts und README ("Performance"). Der WS-Server laeuft
-    // trotzdem weiter, fuer externe Verbraucher.
+    // trotzdem weiter, fuer externe Verbraucher. Laeuft unabhaengig von
+    // der Launcher-Auswahl - erst offene Overlay-Fenster bekommen etwas
+    // zu sehen.
     onMessage: (message) => {
-      for (const win of overlayWindows) {
+      for (const win of overlayWindows.values()) {
         if (!win.isDestroyed()) win.webContents.send('bridge-message', message);
       }
     },

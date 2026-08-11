@@ -33,17 +33,24 @@ npm install
 npm run dev
 ```
 
-Startet Electron im Dev-Modus mit Hot-Reload, verbindet sich mit einer
-laufenden iRacing-Instanz und zeigt neun Overlays (Relative, Standings,
-Fuel, Inputs, Radar, Delta, Session-Timer, Weather, Flags): transparent,
-always-on-top, standardmaessig klickdurchlaessig. `Strg+Alt+E` schaltet
-einen Edit-Modus um (gelber Rahmen). Im Edit-Modus laesst sich jedes
-Fenster einzeln per Ziehen verschieben (auch auf einen anderen Monitor -
-das *ist* die Monitor-Auswahl, es gibt dafuer kein eigenes Dropdown) und
-per Eck-Griff unten rechts in der Groesse aendern. Beides wird automatisch
-gespeichert (`%APPDATA%/iracing-overlay/layouts/default.json`) und beim
-naechsten Start wiederhergestellt - haengt der gespeicherte Monitor nicht
-mehr dran, faellt die Position auf den Standardwert zurueck.
+Startet Electron im Dev-Modus mit Hot-Reload und verbindet sich mit einer
+laufenden iRacing-Instanz. Zuerst erscheint ein Auswahl-Fenster mit
+Checkboxen fuer die neun Overlays (Relative, Standings, Fuel, Inputs,
+Radar, Delta, Session-Timer, Weather, Flags) - erst ein Klick auf "Start"
+oeffnet die angehakten Fenster: transparent, always-on-top, standardmaessig
+klickdurchlaessig. Die Auswahl wird gespeichert
+(`%APPDATA%/iracing-overlay/layouts/selection.json`) und beim naechsten
+Start vorausgewaehlt; beim allerersten Start sind alle neun angehakt. Ueber
+den Tray-Eintrag "Overlays auswaehlen..." laesst sich das Fenster jederzeit
+erneut oeffnen, um einzelne Overlays nachtraeglich an- oder abzuschalten,
+ohne die App neu zu starten. `Strg+Alt+E` schaltet einen Edit-Modus um
+(gelber Rahmen). Im Edit-Modus laesst sich jedes Fenster einzeln per Ziehen
+verschieben (auch auf einen anderen Monitor - das *ist* die
+Monitor-Auswahl, es gibt dafuer kein eigenes Dropdown) und per Eck-Griff
+unten rechts in der Groesse aendern. Beides wird automatisch gespeichert
+(`%APPDATA%/iracing-overlay/layouts/default.json`) und beim naechsten Start
+wiederhergestellt - haengt der gespeicherte Monitor nicht mehr dran, faellt
+die Position auf den Standardwert zurueck.
 
 Ohne laufendes iRacing testen:
 
@@ -56,10 +63,11 @@ separater Prozess wie `src/data/cli.ts`) - der Code ist identisch, nur der
 Aufrufer ist ein anderer, siehe `src/main/dataLayer.ts`.
 
 Da alle Overlay-Fenster rahmenlos sind und keinen Schliessen-Button haben,
-ist der **System-Tray** (gelber Punkt) die einzige Stelle, um die App zu
-steuern: Klick oeffnet ein Menue mit "Edit-Modus" (derselbe Toggle wie
-`Strg+Alt+E`) und "Beenden". Ohne den Tray liesse sich die App nur ueber
-den Task-Manager beenden.
+ist der **System-Tray** (gelber Punkt) die einzige Stelle, um die App
+danach noch zu steuern: Klick oeffnet ein Menue mit "Overlays
+auswaehlen..." (oeffnet erneut das Auswahl-Fenster), "Edit-Modus"
+(derselbe Toggle wie `Strg+Alt+E`) und "Beenden". Ohne den Tray liesse sich
+die App nur ueber den Task-Manager beenden.
 
 ## Installer bauen
 
@@ -101,13 +109,16 @@ src/
                  index.ts          App-Lifecycle, Hotkey, Fenster erzeugen
                  overlayWindow.ts  Fenster erzeugen, Drag/Resize, Persistenz verdrahten
                  layoutStore.ts    Fenstergeometrie als JSON im Nutzerprofil
+                 selectionStore.ts Overlay-Auswahl (an/aus) als JSON im Nutzerprofil
+                 launcherWindow.ts Auswahl-Fenster: Checkboxen + Start
                  dataLayer.ts      startet den Datenlayer im Main-Process
-                 tray.ts           System-Tray: Edit-Modus, Beenden
+                 tray.ts           System-Tray: Overlays auswaehlen, Edit-Modus, Beenden
                  resources.ts      findet Icons in Dev- und gepacktem Build
   preload/     contextBridge-APIs fuer die Renderer
   renderer/    ein Ordner pro Overlay/Fenster, je ein Vite-Eintrag
                  shared/           Overlay-uebergreifend: WS-Client, Formatierung,
                                     Edit-Modus-Verdrahtung, Basis-CSS
+                 launcher/         Auswahl-Fenster: welche Overlays sollen an sein
                  relative/         Autos vor/hinter dem Spieler (Meilenstein 2)
                  standings/        Session-Wertung nach Klasse (Meilenstein 4)
                  fuel/             Verbrauch, Restrunden, Nachtankmenge (Meilenstein 4)

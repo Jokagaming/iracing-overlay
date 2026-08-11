@@ -1,0 +1,127 @@
+/*
+ * Eigenstaendiges, opakes Fenster (kein Overlay) - deshalb kein Rueckgriff
+ * auf shared/overlay.css (das ist auf Transparenz + Klickdurchlaessigkeit
+ * ausgelegt), aber dieselbe Farbsprache fuer Wiedererkennbarkeit.
+ */
+
+:root {
+  --bg: #14161b;
+  --bg-row: rgba(255, 255, 255, 0.04);
+  --bg-row-hover: rgba(255, 255, 255, 0.07);
+  --border: rgba(255, 255, 255, 0.12);
+
+  --text: #f2f4f8;
+  --text-dim: rgba(242, 244, 248, 0.6);
+  --player: #ffd640;
+
+  --font: "Segoe UI", -apple-system, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+.launcher {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 20px;
+}
+
+.launcher h1 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.launcher__hint {
+  margin: 0 0 16px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.launcher__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.launcher__item {
+  border-bottom: 1px solid var(--border);
+}
+
+.launcher__item:last-child {
+  border-bottom: none;
+}
+
+.launcher__item label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.launcher__item label:hover {
+  background: var(--bg-row-hover);
+}
+
+.launcher__item input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--player);
+  cursor: pointer;
+}
+
+.launcher__actions {
+  display: flex;
+  gap: 12px;
+  margin: 10px 0;
+}
+
+.launcher__link {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
+.launcher__link:hover {
+  color: var(--text);
+}
+
+.launcher__start {
+  margin-top: 4px;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  background: var(--player);
+  color: #14161b;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.launcher__start:hover {
+  filter: brightness(1.08);
+}

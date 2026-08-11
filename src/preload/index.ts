@@ -30,3 +30,14 @@ contextBridge.exposeInMainWorld('overlayAPI', {
     ipcRenderer.on('bridge-message', (_event, message: BridgeMessage) => callback(message));
   },
 });
+
+// Nur vom Launcher-Fenster genutzt (src/renderer/launcher) - in den
+// Overlay-Fenstern ungenutzt, aber unschaedlich, da alle Fenster dasselbe
+// Preload-Skript laden.
+contextBridge.exposeInMainWorld('launcherAPI', {
+  getConfig: (): Promise<{ overlays: { id: string; label: string }[]; selected: string[] }> =>
+    ipcRenderer.invoke('launcher:get-config'),
+  start: (selectedIds: string[]): void => {
+    ipcRenderer.send('launcher:start', selectedIds);
+  },
+});
