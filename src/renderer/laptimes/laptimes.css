@@ -1,0 +1,64 @@
+@import "../shared/overlay.css";
+
+.laptimes {
+  min-width: 260px;
+}
+
+#best {
+  color: var(--good);
+  font-weight: 600;
+}
+
+.laptimes__body {
+  height: calc(100% - 24px);
+  padding: 8px 10px 6px;
+  box-sizing: border-box;
+}
+
+.laptimes__chart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 6px;
+  height: 100%;
+}
+
+.laptimes__col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  min-width: 0;
+}
+
+.laptimes__bar {
+  width: 100%;
+  max-width: 28px;
+  border-radius: 3px 3px 0 0;
+  background: var(--behind);
+  opacity: 0.7;
+}
+
+.laptimes__bar--best {
+  background: var(--good);
+  opacity: 1;
+}
+
+.is-empty .laptimes__bar {
+  background: var(--border);
+  opacity: 0.4;
+}
+
+.laptimes__label {
+  margin-top: 4px;
+  font-size: 9px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.is-empty .laptimes__label {
+  color: var(--text-dim);
+  opacity: 0.5;
+}

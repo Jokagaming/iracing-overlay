@@ -9,6 +9,7 @@ const rendererEntries = {
   inputs: resolve(__dirname, 'src/renderer/inputs/index.html'),
   radar: resolve(__dirname, 'src/renderer/radar/index.html'),
   delta: resolve(__dirname, 'src/renderer/delta/index.html'),
+  laptimes: resolve(__dirname, 'src/renderer/laptimes/index.html'),
   timer: resolve(__dirname, 'src/renderer/timer/index.html'),
   weather: resolve(__dirname, 'src/renderer/weather/index.html'),
   flags: resolve(__dirname, 'src/renderer/flags/index.html'),

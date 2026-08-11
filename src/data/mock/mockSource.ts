@@ -10,6 +10,7 @@
 import type { BridgeMessage, CarLeftRight, Driver, DriverRosterEntry, SessionState, TelemetryFrame } from '../types.js';
 import type { DataSource } from '../connector.js';
 import { FuelTracker } from '../calc/fuel.js';
+import { LapTimeTracker } from '../calc/laptimes.js';
 
 const TRACK_LENGTH_M = 5793;
 const LAP_TIME_BASE = 103.5;
@@ -59,6 +60,7 @@ export class MockSource implements DataSource {
   private readonly sessionMessage: BridgeMessage & { type: 'session' };
   private readonly startedAt = performance.now();
   private readonly fuelTracker = new FuelTracker();
+  private readonly lapTimeTracker = new LapTimeTracker();
   private seq = 0;
   private sessionSent = false;
 
@@ -199,11 +201,17 @@ export class MockSource implements DataSource {
         estTimeSec: lapDistPct * car.lapTime,
         onPitRoad: false,
         trackSurface: 'on_track',
-        lastLapSec: lap > 1 ? car.lapTime : null,
+        // Leichte, deterministische Schwankung pro Runde statt einer
+        // platten Konstante - realistischer fuer alles, was mehrere
+        // Runden nebeneinander zeigt (Standings, Laptimes-Diagramm).
+        lastLapSec: lap > 1 ? car.lapTime * (0.985 + 0.03 * Math.sin(car.idx * 7 + lap * 3)) : null,
         bestLapSec: lap > 1 ? car.lapTime * 0.99 : null,
         gapToLeaderSec,
       };
     });
+
+    const playerDriver = drivers.find((d) => d.carIdx === PLAYER_IDX)!;
+    this.lapTimeTracker.update(playerDriver.lap, playerDriver.lastLapSec);
 
     const playerProgress = progress.get(PLAYER_IDX)!;
     // Wegen car.offset ist playerProgress kurz nach dem Start negativ. Ohne
@@ -259,6 +267,7 @@ export class MockSource implements DataSource {
           rr: { tempInnerC: 91, tempMiddleC: 88, tempOuterC: 84, wearPct: Math.max(0, 1 - playerProgress * 0.0035), coldPressureKpa: 165 },
         },
         carLeftRight,
+        lastLapTimesSec: this.lapTimeTracker.lastLaps,
       },
       weather: { airTempC: 24, trackTempC: 34.5, humidityPct: 0.45, trackWetness: 'dry' },
     };

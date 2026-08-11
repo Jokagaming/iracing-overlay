@@ -35,8 +35,8 @@ npm run dev
 
 Startet Electron im Dev-Modus mit Hot-Reload und verbindet sich mit einer
 laufenden iRacing-Instanz. Zuerst erscheint ein Auswahl-Fenster mit
-Checkboxen fuer die neun Overlays (Relative, Standings, Fuel, Inputs,
-Radar, Delta, Session-Timer, Weather, Flags) - erst ein Klick auf "Start"
+Checkboxen fuer die zehn Overlays (Relative, Standings, Fuel, Inputs,
+Radar, Delta, Laptimes, Session-Timer, Weather, Flags) - erst ein Klick auf "Start"
 oeffnet die angehakten Fenster: transparent, always-on-top, standardmaessig
 klickdurchlaessig. Die Auswahl wird gespeichert
 (`%APPDATA%/iracing-overlay/layouts/selection.json`) und beim naechsten
@@ -125,12 +125,13 @@ src/
                  inputs/           Gas/Bremse/Lenkung als Graph, Gang+Drehzahl (Meilenstein 5)
                  radar/            Naehe-Warnung + Autos in der Umgebung (Meilenstein 5)
                  delta/            Abstand zur eigenen Bestzeit (Meilenstein 6)
+                 laptimes/         Balkendiagramm der letzten 5 Rundenzeiten
                  timer/            Session-Countdown, Runden/Zeit (Meilenstein 6)
                  weather/          Luft-/Streckentemperatur, Nasszustand (Meilenstein 6)
                  flags/            Aktive Streckenflaggen (Meilenstein 6)
   data/        Datenlayer, eigenstaendig lauffaehig ohne Electron:
                  types.ts        normalisiertes Modell
-                 calc/            reine Funktionen (Relative-Gap, Fuel-Planung, Standings), getestet
+                 calc/            reine Funktionen (Relative-Gap, Fuel-Planung, Standings, Rundenzeiten-Historie), getestet
                  normalize/       SDK-Rohdaten -> normalisiertes Modell
                  mock/            simulierte Telemetrie ohne iRacing
                  server/          WebSocket-Broadcast
@@ -159,7 +160,7 @@ npx vitest run
 ```
 
 Testet die reinen Berechnungsfunktionen (`src/data/calc/`): Relative-Gap,
-Fuel-Tracking/-Planung, Standings-Gruppierung.
+Fuel-Tracking/-Planung, Standings-Gruppierung, Rundenzeiten-Historie.
 
 ## Radar: bewusste Design-Entscheidung
 

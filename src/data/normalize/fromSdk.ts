@@ -194,6 +194,9 @@ function buildPlayer(t: TelemetryVarList, playerCarIdx: number): PlayerState {
     },
     tires: buildTires(t),
     carLeftRight: decodeCarLeftRight(scalarNum(t.CarLeftRight)),
+    // Wird vom Connector nach dem Aufruf hier befuellt - siehe fuel oben
+    // und calc/laptimes.ts, braucht Zustand ueber mehrere Ticks.
+    lastLapTimesSec: [],
   };
 }
 
