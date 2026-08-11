@@ -41,3 +41,7 @@ publish:
   provider: github
   owner: Jokagaming
   repo: iracing-overlay
+  # Ohne das legt electron-builder das Release nur als Entwurf an - erst
+  # ein manueller Klick auf "Publish release" in der GitHub-UI macht es
+  # sichtbar/downloadbar. Mit "release" ist es sofort nach dem CI-Lauf live.
+  releaseType: release
