@@ -20,6 +20,24 @@ import { MultiCarSectorTracker } from './calc/sectors.js';
 const POLL_TIMEOUT_MS = Math.floor((1 / 60) * 1000); // ~16ms, siehe irsdk-node README
 const RECONNECT_DELAY_MS = 1000;
 
+/**
+ * Wie viele aufeinanderfolgende `waitForData()`-Fehlschlaege toleriert
+ * werden, bevor die Verbindung wirklich als getrennt gilt.
+ *
+ * Gegen ein echtes, laufendes iRacing verifiziert: direkt nach `startSDK()`
+ * schlaegt der ERSTE `waitForData(16ms)`-Aufruf zuverlaessig fehl (die
+ * Verbindung braucht minimal laenger als ein einzelnes 16ms-Fenster, um
+ * tatsaechlich Daten zu liefern - vermutlich der interne Aufbau der
+ * Shared-Memory-Zuordnung). Mit Schwellenwert 1 (der urspruengliche Code)
+ * wurde deshalb JEDE Verbindung sofort wieder abgebaut, bevor je ein
+ * einziger Frame ankam - die App zeigte dauerhaft "Warte auf iRacing",
+ * obwohl der Sim laengst lief. 60 Fehlschlaege in Folge sind bei ~16ms
+ * Timeout pro Versuch rund eine Sekunde Toleranz - genug fuer den
+ * Verbindungsaufbau, aber immer noch schnell genug, um ein echtes
+ * Sim-Ende zeitnah zu erkennen.
+ */
+const MAX_CONSECUTIVE_MISSES = 60;
+
 /** Gemeinsame Schnittstelle von Live-Verbindung und Mock-/Replay-Quelle. */
 export interface DataSource {
   readonly lastSessionMessage: BridgeMessage | null;
@@ -36,6 +54,7 @@ export class IRacingConnector implements DataSource {
   private sessionMessage: BridgeMessage | null = null;
   private connected = false;
   private lastConnectAttempt = 0;
+  private consecutiveMisses = 0;
   private fuelTracker = new FuelTracker();
   private lapTimeTracker = new LapTimeTracker();
   private sectorTracker = new MultiCarSectorTracker();
@@ -73,11 +92,17 @@ export class IRacingConnector implements DataSource {
 
     const gotData = this.sdk.waitForData(POLL_TIMEOUT_MS);
     if (!gotData) {
-      // Sim beendet oder Timeout ohne neue Daten - Verbindung neu aufbauen.
+      this.consecutiveMisses += 1;
+      if (this.consecutiveMisses < MAX_CONSECUTIVE_MISSES) return [];
+
+      // Erst nach wiederholtem Ausbleiben wirklich als getrennt werten,
+      // siehe MAX_CONSECUTIVE_MISSES.
       this.sdk.stopSDK();
       this.sdk = null;
+      this.consecutiveMisses = 0;
       return this.emitConnectionChange(false);
     }
+    this.consecutiveMisses = 0;
 
     const messages = this.emitConnectionChange(true);
     const sessionMessage = this.maybeSession();
@@ -142,6 +167,7 @@ export class IRacingConnector implements DataSource {
     this.sdk = new IRacingSDK({ autoEnableTelemetry: true });
     this.sdk.startSDK();
     this.lastSessionVersion = -1;
+    this.consecutiveMisses = 0;
     return [];
   }
 

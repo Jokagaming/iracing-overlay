@@ -372,11 +372,15 @@ Sollte beim naechsten Mal zuerst erneut gegengeprueft werden.
 
 - Als "UNSICHER" markierte SDK-Feldnamen/Semantik (`src/data/types.ts`)
   sind noch nicht gegen echte Session-Daten in jeder denkbaren Konstellation
-  verifiziert, nur gegen den Demo-Modus und den ersten Live-Test (siehe
-  unten).
+  verifiziert, nur gegen den Demo-Modus und den ersten Live-Test (solo,
+  siehe unten).
 - `irsdk-node`s Umgang mit fehlerhaft formatierter Session-YAML (Sonderzeichen
   in Fahrernamen, Team-Events) ist ungeprueft; IRSDKSharper (C#) patcht dafuer
   bekannte Faelle, ob `irsdk-node` das auch tut, ist offen.
+- Live-Test lief bisher nur solo in "Offline Testing" (Daytona Rallycross
+  Short). Mehrfahrer-Felder (echtes Standings-Feld, Ueberrunden-Gaps,
+  `carLeftRight` mit tatsaechlich nahen Autos) sind damit weiterhin nur gegen
+  den Demo-Modus verifiziert.
 - Mehrere benannte Layout-Profile (je eigene Overlay-Auswahl + eigene
   Fensterpositionen) lassen sich jetzt im Launcher anlegen/umbenennen/
   loeschen/wechseln - **automatisches** Umschalten anhand des gerade
@@ -403,3 +407,27 @@ Fix: `asarUnpack` fuer `@irsdk-node/native` in `electron-builder.yml`
 (entpackt die native Bindung neben das asar-Archiv) plus ein `try/catch`
 um `poll()` in `src/data/connector.ts`, das solche Fehler kuenftig ins Log
 schreibt statt sie verschluckt.
+
+Behoben (danach, zweiter Bug mit identischem Symptom): Trotz obigem Fix
+blieb "Warte auf iRacing ..." in einem weiteren Live-Test bestehen (diesmal
+per `npx tsx src/data/cli.ts`, also ganz ohne asar/Electron-Packaging -
+der 1.3.1-Fix war also gar nicht die Ursache dieses Falls). Zweite,
+unabhaengige Ursache: `pollOnce()` hat jeden einzelnen
+`waitForData()`-Timeout als Sim-Ende gewertet und die Verbindung sofort
+wieder abgebaut - der allererste `waitForData(16ms)`-Aufruf direkt nach
+`startSDK()` schlaegt aber zuverlaessig fehl (vermutlich baut sich die
+Shared-Memory-Zuordnung intern noch auf). Da `tryConnect()` sofort danach
+wieder greift (nur per `RECONNECT_DELAY_MS` gebremst), sah das von aussen
+identisch aus wie der 1.3.1-Fall: alle ~1s ein neuer Verbindungsversuch,
+der nie ueber den ersten Tick hinauskommt. Vermutlich also weiterhin
+reproduzierbar gewesen, auch nach 1.3.1, sobald `waitForData()` einmal
+knapp daneben liegt. Per `fs.appendFileSync`-Logging in
+`src/data/connector.ts` diagnostiziert (`console.log` wird bei per
+`nohup`/Bash-Background-Task umgeleitetem stdout gepuffert und kam nicht
+zuverlaessig an). Fix: `consecutiveMisses`-Zaehler, Verbindung erst nach
+`MAX_CONSECUTIVE_MISSES = 60` (~1s) aufeinanderfolgenden Fehlschlaegen als
+getrennt werten statt beim ersten. Mit echten Daten verifiziert (Track- und
+Fahrerdaten, Reifentemperaturen/-druecke, Wetter, Sicherheitsrating-Format
+`"R 0.01"`, `trackWetness`-Decoding) - alle als "UNSICHER" markierten Felder
+in `src/data/types.ts`, die in diesem Test durchlaufen wurden, stimmten mit
+der echten SDK-Ausgabe ueberein.
