@@ -35,7 +35,7 @@ export interface LauncherOptions {
   onCreateProfile: (name: string) => Promise<LauncherProfile>;
   onRenameProfile: (profileId: string, name: string) => void;
   onDeleteProfile: (profileId: string) => Promise<{ profiles: LauncherProfile[]; activeProfileId: string }>;
-  onStart: (profileId: string, selectedIds: string[]) => void;
+  onStart: (profileId: string, selectedIds: string[]) => void | Promise<void>;
 }
 
 let win: BrowserWindow | null = null;
@@ -108,6 +108,12 @@ ipcMain.on('launcher:rename-profile', (_event, profileId: string, name: string) 
 ipcMain.handle('launcher:delete-profile', (_event, profileId: string) => options?.onDeleteProfile(profileId));
 
 ipcMain.on('launcher:start', (_event, profileId: string, selectedIds: string[]) => {
-  options?.onStart(profileId, selectedIds);
-  win?.close();
+  // Erst schliessen, wenn die Overlay-Fenster tatsaechlich erstellt sind -
+  // sonst existiert fuer einen Moment gar kein Fenster mehr (Launcher zu,
+  // die neuen Overlays noch nicht so weit, deren erster await liegt schon
+  // in createOverlayWindow()). Das loeste 'window-all-closed' bei null
+  // Fenstern aus - ohne Handler dafuer quittet die App zwar nicht
+  // automatisch, aber der Prozess blieb dabei beobachtet entweder ganz
+  // ohne sichtbare Fenster haengen oder wurde ganz beendet.
+  Promise.resolve(options?.onStart(profileId, selectedIds)).finally(() => win?.close());
 });

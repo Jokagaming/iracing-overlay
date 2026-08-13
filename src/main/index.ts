@@ -175,9 +175,7 @@ app.whenReady().then(async () => {
       void renameProfile(profileId, name);
     },
     onDeleteProfile: (profileId) => deleteProfile(profileId),
-    onStart: (profileId, selectedIds) => {
-      void applyProfile(profileId, selectedIds);
-    },
+    onStart: (profileId, selectedIds) => applyProfile(profileId, selectedIds),
   });
 
   const registered = globalShortcut.register(EDIT_MODE_HOTKEY, toggleEditMode);

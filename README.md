@@ -431,3 +431,27 @@ Fahrerdaten, Reifentemperaturen/-druecke, Wetter, Sicherheitsrating-Format
 `"R 0.01"`, `trackWetness`-Decoding) - alle als "UNSICHER" markierten Felder
 in `src/data/types.ts`, die in diesem Test durchlaufen wurden, stimmten mit
 der echten SDK-Ausgabe ueberein.
+
+Behoben (dritter, unabhaengiger Bug - "Overlays gehen kurz auf und direkt
+wieder zu"): Nach Klick auf "Start" im Launcher schloss `launcherWindow.ts`
+das Launcher-Fenster synchron sofort (`win?.close()`), waehrend
+`applyProfile()` die neuen Overlay-Fenster nur *angestossen* hatte
+(`void applyProfile(...)`, nicht awaited) - deren erster `await` liegt schon
+in `createOverlayWindow()` -> `loadWindowLayout()`, die eigentlichen
+`new BrowserWindow(...)`-Aufrufe folgen also erst einen Tick spaeter. In der
+Luecke dazwischen existierte fuer einen Moment kein einziges Fenster mehr,
+was Electrons `window-all-closed` mit null Fenstern ausloeste. Ohne
+Handler dafuer quittet die App zwar nicht automatisch (bewusst so, siehe
+oben) - beobachtet wurde aber uneinheitliches Verhalten: mal blieb der
+Prozess am Leben, ohne dass je ein Overlay-Fenster sichtbar wurde, mal
+beendete er sich komplett, ohne Absturz-Dialog, ohne Eintrag in
+`crash-debug.log` (eigens fuer diese Diagnose ergaenzter globaler
+`uncaughtException`/`unhandledRejection`-Handler), ohne Windows-Ereignis-
+Log-Eintrag und ohne Crash-Dump - alles Hinweise auf einen sauberen Exit,
+nicht auf einen echten Absturz. Reproduzierbar mit 0, 1 und allen 12
+Overlays ausgewaehlt, also unabhaengig von der Fensteranzahl. Fix:
+`onStart` gibt jetzt das Promise von `applyProfile()` zurueck,
+`launcherWindow.ts` schliesst das Fenster erst in `.finally()` danach -
+keine Luecke mehr ohne offenes Fenster. Gegen den gepackten Build (nicht
+nur Dev-Modus) mehrfach mit 0/1/12 Overlays nachgetestet, jeweils stabil
+ueber mehrere Sekunden ohne Absturz.
