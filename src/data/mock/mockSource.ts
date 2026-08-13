@@ -238,6 +238,12 @@ export class MockSource implements DataSource {
     const playerDriver = drivers.find((d) => d.carIdx === PLAYER_IDX)!;
     this.lapTimeTracker.update(playerDriver.lap, playerDriver.lastLapSec);
 
+    const classmateIdx = drivers.filter((d) => d.carClassId === playerDriver.carClassId).map((d) => d.carIdx);
+    const fieldBest = this.sectorTracker.fieldBestByNum(classmateIdx);
+    const playerSectorTimes = this.sectorTracker
+      .resultsFor(PLAYER_IDX)
+      .map((sector) => ({ ...sector, fieldBestSec: fieldBest.get(sector.num) ?? null }));
+
     const playerProgress = progress.get(PLAYER_IDX)!;
     // Wegen car.offset ist playerProgress kurz nach dem Start negativ. Ohne
     // die Untergrenze zaehlt das als Rundenwechsel 0->1 nach nur ~2s und
@@ -296,7 +302,7 @@ export class MockSource implements DataSource {
         },
         carLeftRight,
         lastLapTimesSec: this.lapTimeTracker.lastLaps,
-        sectorTimes: this.sectorTracker.resultsFor(PLAYER_IDX),
+        sectorTimes: playerSectorTimes,
         currentSector:
           currentSectorNum != null && currentSectorElapsedSec != null
             ? { num: currentSectorNum, elapsedSec: currentSectorElapsedSec }

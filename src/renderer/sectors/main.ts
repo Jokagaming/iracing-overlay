@@ -17,7 +17,9 @@ const liveTimeEl = document.getElementById('live-time') as HTMLSpanElement;
 interface RowElements {
   li: HTMLLIElement;
   num: HTMLSpanElement;
-  time: HTMLSpanElement;
+  last: HTMLSpanElement;
+  session: HTMLSpanElement;
+  field: HTMLSpanElement;
 }
 
 /** Wiederverwendeter Pool statt bei jedem Frame neu zu bauen (siehe relative/main.ts). */
@@ -36,9 +38,9 @@ function showStatus(text: string): void {
 function createRow(): RowElements {
   const li = document.createElement('li');
   li.className = 'sectors__row';
-  li.innerHTML = `<span class="sectors__num"></span><span class="sectors__time"></span>`;
-  const [num, time] = li.children as unknown as HTMLSpanElement[];
-  const row: RowElements = { li, num: num!, time: time! };
+  li.innerHTML = `<span class="sectors__num"></span><span class="sectors__time"></span><span class="sectors__time sectors__time--session"></span><span class="sectors__time"></span>`;
+  const [num, last, session, field] = li.children as unknown as HTMLSpanElement[];
+  const row: RowElements = { li, num: num!, last: last!, session: session!, field: field! };
   rowPool.push(row);
   list.append(li);
   return row;
@@ -71,8 +73,15 @@ function render(client: TelemetryClient): void {
     const row = rowPool[index] ?? createRow();
     row.li.classList.remove('is-hidden');
     setText(row.num, `S${sector.num}`);
-    setText(row.time, sector.lastSec != null ? format.gap(sector.lastSec, 2) : '--');
-    row.time.classList.toggle('sectors__time--best', sector.isPersonalBest);
+    setText(row.last, sector.lastSec != null ? format.gap(sector.lastSec, 2) : '--');
+    // Feld-Bestzeit geschlagen wiegt schwerer als nur die eigene Bestzeit -
+    // lila statt gruen, sim-racing-uebliche Konvention (siehe overlay.css).
+    const beatField = sector.fieldBestSec != null && sector.lastSec != null && sector.lastSec <= sector.fieldBestSec;
+    row.last.classList.toggle('sectors__time--best', sector.isPersonalBest && !beatField);
+    row.last.classList.toggle('sectors__time--field-best', beatField);
+    setText(row.session, sector.bestSec != null ? format.gap(sector.bestSec, 2) : '--');
+    setText(row.field, sector.fieldBestSec != null ? format.gap(sector.fieldBestSec, 2) : '--');
+    row.field.classList.toggle('sectors__time--field-best', sector.fieldBestSec != null);
   });
   for (let i = sectorTimes.length; i < rowPool.length; i += 1) rowPool[i]!.li.classList.add('is-hidden');
 

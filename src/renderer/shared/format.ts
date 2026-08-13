@@ -23,9 +23,14 @@ export function lapTime(seconds: number | null): string {
   return `${minutes}:${rest.toFixed(3).padStart(6, '0')}`;
 }
 
-/** iRating kompakt: "4.2k". */
+/**
+ * iRating kompakt: "4.2k". Werte unter 100 kommen in der Praxis nur als
+ * SDK-Platzhalter vor (z.B. `1` in "Offline Testing", wo iRating nicht
+ * zutrifft) - eine echte Wertung faengt praktisch nie so niedrig an, und
+ * `(1/1000).toFixed(1)` ergaebe ohnehin nur ein nichtssagendes "0.0k".
+ */
 export function iRating(value: number | null): string {
-  if (!value || value <= 0) return '';
+  if (!value || value < 100) return '';
   return `${(value / 1000).toFixed(1)}k`;
 }
 

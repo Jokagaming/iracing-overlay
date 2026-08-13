@@ -186,6 +186,19 @@ export interface SectorResult {
 }
 
 /**
+ * Wie {@link SectorResult}, aber nur fuers eigene Auto: zusaetzlich die
+ * Feld-Bestzeit (schnellste Zeit aller Fahrer der eigenen Fahrzeugklasse in
+ * dieser Session), siehe `MultiCarSectorTracker.fieldBestByNum()` in
+ * calc/sectors.ts. Fuer andere Autos (Driver.sectorTimes) nicht berechnet -
+ * das wuerde pro Tick und Auto denselben Feld-Vergleich wiederholen, ohne
+ * dass ein Overlay das je anzeigt.
+ */
+export interface PlayerSectorResult extends SectorResult {
+  /** `null` ohne Vergleichswert (z.B. Solo-Session ohne weitere Autos derselben Klasse). */
+  fieldBestSec: number | null;
+}
+
+/**
  * `CarLeftRight` - direkt vom SDK berechnetes Naehe-Signal, kein
  * per-Auto-Array. Das ist die einzige vom SDK selbst gelieferte
  * Seitenposition-Information; es gibt keine Telemetrie, aus der sich die
@@ -221,7 +234,7 @@ export interface PlayerState {
    */
   lastLapTimesSec: number[];
   /** Ein Eintrag pro Sektor aus `SessionState.sectors`, gleiche Reihenfolge. `[]` ohne definierte Sektoren. */
-  sectorTimes: SectorResult[];
+  sectorTimes: PlayerSectorResult[];
   /** Der gerade laufende Sektor - `null` ohne definierte Sektoren. */
   currentSector: { num: number; elapsedSec: number } | null;
 }

@@ -24,6 +24,8 @@
   --pit: #ff4d6d;
   --good: #57e08a;
   --warn: #ffb84d;
+  /* Feld-/Session-Bestzeit - sim-racing-uebliche Konvention (z.B. iRacing/RaceLab): lila statt gruen. */
+  --best-overall: #c084fc;
 
   --radius: 6px;
   --row-height: 24px;

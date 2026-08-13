@@ -89,6 +89,38 @@ describe('MultiCarSectorTracker', () => {
     expect(tracker.currentSectorNumFor(99)).toBeNull();
   });
 
+  it('liefert die schnellste Zeit je Sektor ueber mehrere Autos (Feld-Bestzeit)', () => {
+    const tracker = new MultiCarSectorTracker();
+    tracker.setBoundaries(BOUNDARIES);
+
+    // Auto 1: Sektor 1 in 8s (schneller)
+    tracker.update(1, 0, 0);
+    tracker.update(1, 0.33, 8);
+    // Auto 2: Sektor 1 in 12s (langsamer)
+    tracker.update(2, 0, 0);
+    tracker.update(2, 0.33, 12);
+
+    expect(tracker.fieldBestByNum([1, 2]).get(1)).toBe(8);
+  });
+
+  it('ignoriert Autos ausserhalb der uebergebenen Liste (z.B. andere Fahrzeugklasse)', () => {
+    const tracker = new MultiCarSectorTracker();
+    tracker.setBoundaries(BOUNDARIES);
+
+    tracker.update(1, 0, 0);
+    tracker.update(1, 0.33, 8);
+    tracker.update(2, 0, 0);
+    tracker.update(2, 0.33, 12);
+
+    expect(tracker.fieldBestByNum([2]).get(1)).toBe(12);
+  });
+
+  it('liefert eine leere Map ohne Vergleichswerte', () => {
+    const tracker = new MultiCarSectorTracker();
+    tracker.setBoundaries(BOUNDARIES);
+    expect(tracker.fieldBestByNum([1, 2]).size).toBe(0);
+  });
+
   it('gibt neu geaenderte Sektorgrenzen an bereits bekannte Autos weiter', () => {
     const tracker = new MultiCarSectorTracker();
     tracker.setBoundaries(BOUNDARIES);

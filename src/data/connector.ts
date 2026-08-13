@@ -150,7 +150,15 @@ export class IRacingConnector implements DataSource {
       driver.sectorTimes = this.sectorTracker.resultsFor(driver.carIdx);
     }
 
-    frame.player.sectorTimes = this.sectorTracker.resultsFor(frame.player.carIdx);
+    // Feld-Bestzeit nur gegen die eigene Fahrzeugklasse - ein GT4-Sektor
+    // gegen einen GT3-Bestwert waere kein sinnvoller Vergleich.
+    const playerClassId = frame.drivers.find((d) => d.carIdx === frame.player.carIdx)?.carClassId ?? null;
+    const classmateIdx = frame.drivers.filter((d) => d.carClassId === playerClassId).map((d) => d.carIdx);
+    const fieldBest = this.sectorTracker.fieldBestByNum(classmateIdx);
+
+    frame.player.sectorTimes = this.sectorTracker
+      .resultsFor(frame.player.carIdx)
+      .map((sector) => ({ ...sector, fieldBestSec: fieldBest.get(sector.num) ?? null }));
     const num = this.sectorTracker.currentSectorNumFor(frame.player.carIdx);
     const elapsedSec = this.sectorTracker.currentElapsedSecFor(frame.player.carIdx, frame.sessionTimeSec);
     frame.player.currentSector = num != null && elapsedSec != null ? { num, elapsedSec } : null;

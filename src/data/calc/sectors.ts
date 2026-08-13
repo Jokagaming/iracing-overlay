@@ -113,6 +113,24 @@ export class MultiCarSectorTracker {
     return this.trackers.get(carIdx)?.results ?? [];
   }
 
+  /**
+   * Schnellste Zeit je Sektor ueber die angegebenen Autos (z.B. alle Autos
+   * derselben Fahrzeugklasse) - die Feld-Bestzeit dieser Session. Autos, die
+   * hier noch nie getrackt wurden (z.B. noch nicht gestartet), tragen
+   * einfach nichts bei statt einen Fehler zu werfen.
+   */
+  fieldBestByNum(carIdxs: Iterable<number>): Map<number, number> {
+    const result = new Map<number, number>();
+    for (const carIdx of carIdxs) {
+      for (const sector of this.trackers.get(carIdx)?.results ?? []) {
+        if (sector.bestSec == null) continue;
+        const current = result.get(sector.num);
+        if (current == null || sector.bestSec < current) result.set(sector.num, sector.bestSec);
+      }
+    }
+    return result;
+  }
+
   currentSectorNumFor(carIdx: number): number | null {
     return this.trackers.get(carIdx)?.currentSectorNum ?? null;
   }

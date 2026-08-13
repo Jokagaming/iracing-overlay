@@ -391,6 +391,16 @@ Sollte beim naechsten Mal zuerst erneut gegengeprueft werden.
 - Edit-Modus/Tray nach dem IPC-Umbau nicht interaktiv nachgeprueft (siehe
   "Performance" oben) - Eingabe-Simulation versagte in dieser Session
   systemweit, nicht nur fuer diese App.
+- Laptimes-Overlay wurde einmalig als "erscheint kurz, verschwindet sofort
+  wieder" gemeldet - beim Nachpruefen (Fenster-Liste + wiederholte
+  Screenshots ueber mehrere Sekunden) lief es stabil, nicht reproduzierbar.
+  Vermutlich ein einmaliger Timing-Effekt kurz nach App-Start. Falls das
+  wieder auftritt, naeher untersuchen.
+- Track Map weiterhin nicht gebaut: `VelocityX`/`VelocityY`/`YawNorth`
+  brauchen zur Verifikation der Achskonvention eine tatsaechlich fahrende
+  Session (siehe "Track Map: bewusst zurueckgestellt" unten) - beim ersten
+  Versuch stand das Auto still (`Speed=0`, beide Velocity-Komponenten 0),
+  keine Bewegungsdaten zum Verifizieren.
 
 Geklaert: `irsdk-node`s native Bindings laden ohne Probleme in Electrons
 Node-ABI (getestet via `ELECTRON_RUN_AS_NODE=1`) - das Paket wird explizit
@@ -455,3 +465,18 @@ Overlays ausgewaehlt, also unabhaengig von der Fensteranzahl. Fix:
 keine Luecke mehr ohne offenes Fenster. Gegen den gepackten Build (nicht
 nur Dev-Modus) mehrfach mit 0/1/12 Overlays nachgetestet, jeweils stabil
 ueber mehrere Sekunden ohne Absturz.
+
+Behoben: iRating im Relative-Overlay zeigte "0.0k" statt leer zu bleiben.
+Ursache: `IRating` liefert in "Offline Testing" den SDK-Platzhalter `1`
+(kein echter Wert, iRating gilt dort nicht) - `(1/1000).toFixed(1)` ergibt
+"0.0". Fix: `format.iRating()` blendet Werte unter 100 aus statt sie
+darzustellen (eine echte Wertung faengt praktisch nie so niedrig an).
+
+Ergaenzt: Sektor-Overlay zeigt jetzt neben der letzten Zeit auch die
+eigene Session-Bestzeit und die Feld-Bestzeit (schnellste Zeit aller Autos
+derselben Fahrzeugklasse in dieser Session, lila statt gruen eingefaerbt -
+uebliche Sim-Racing-Konvention). `MultiCarSectorTracker.fieldBestByNum()`
+in `calc/sectors.ts` haelt dafuer je Sektor die schnellste `bestSec` ueber
+eine uebergebene Liste von Autos fest; `connector.ts` filtert diese Liste
+auf die eigene Fahrzeugklasse, damit ein GT4-Sektor nicht gegen einen
+GT3-Bestwert verglichen wird.

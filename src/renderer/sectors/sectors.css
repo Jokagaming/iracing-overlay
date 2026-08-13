@@ -9,19 +9,34 @@
 }
 
 .sectors__row {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
   align-items: center;
+  gap: 4px;
   padding: 3px 4px;
   font-size: 12px;
 }
 
 .sectors__row--live {
+  grid-template-columns: 1fr 1fr;
   margin-bottom: 4px;
   padding-bottom: 6px;
   border-bottom: 1px solid var(--border);
   font-weight: 700;
   color: var(--player);
+}
+
+.sectors__row--head {
+  padding-top: 0;
+  padding-bottom: 2px;
+  color: var(--text-dim);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.sectors__row--head .sectors__time {
+  font-weight: 400;
 }
 
 .sectors__list {
@@ -38,8 +53,18 @@
 .sectors__time {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
+  text-align: right;
 }
 
 .sectors__time--best {
   color: var(--good);
+}
+
+.sectors__time--field-best {
+  color: var(--best-overall);
+}
+
+.sectors__time--session {
+  color: var(--text-dim);
+  font-weight: 400;
 }
