@@ -36,6 +36,7 @@ async function buildSource(demo: boolean): Promise<DataSource> {
 function welcomeMessages(source: DataSource): BridgeMessage[] {
   const messages: BridgeMessage[] = [{ type: 'connection', connected: source.lastSessionMessage != null }];
   if (source.lastSessionMessage) messages.push(source.lastSessionMessage);
+  if (source.lastTrackMapMessage) messages.push(source.lastTrackMapMessage);
   return messages;
 }
 

@@ -16,6 +16,7 @@ import { buildSessionState, buildTelemetryFrame } from './normalize/fromSdk.js';
 import { FuelTracker } from './calc/fuel.js';
 import { LapTimeTracker } from './calc/laptimes.js';
 import { MultiCarSectorTracker } from './calc/sectors.js';
+import { TrackPositionTracker } from './calc/trackPosition.js';
 
 const POLL_TIMEOUT_MS = Math.floor((1 / 60) * 1000); // ~16ms, siehe irsdk-node README
 const RECONNECT_DELAY_MS = 1000;
@@ -41,6 +42,8 @@ const MAX_CONSECUTIVE_MISSES = 60;
 /** Gemeinsame Schnittstelle von Live-Verbindung und Mock-/Replay-Quelle. */
 export interface DataSource {
   readonly lastSessionMessage: BridgeMessage | null;
+  /** Wie lastSessionMessage, aber fuer die Track-Map-Referenz-Polylinie - siehe calc/trackPosition.ts. `null`, solange keine Runde komplett aufgezeichnet ist. */
+  readonly lastTrackMapMessage: BridgeMessage | null;
   poll(): Promise<BridgeMessage[]>;
   close(): void;
 }
@@ -58,9 +61,15 @@ export class IRacingConnector implements DataSource {
   private fuelTracker = new FuelTracker();
   private lapTimeTracker = new LapTimeTracker();
   private sectorTracker = new MultiCarSectorTracker();
+  private trackTracker = new TrackPositionTracker();
+  private trackMapMessage: BridgeMessage | null = null;
 
   get lastSessionMessage(): BridgeMessage | null {
     return this.sessionMessage;
+  }
+
+  get lastTrackMapMessage(): BridgeMessage | null {
+    return this.trackMapMessage;
   }
 
   close(): void {
@@ -113,6 +122,8 @@ export class IRacingConnector implements DataSource {
     this.enrichFuel(frame);
     this.enrichLapTimes(frame);
     this.enrichSectors(frame);
+    const trackMapMessage = this.enrichTrackPosition(frame);
+    if (trackMapMessage) messages.push(trackMapMessage);
     messages.push({ type: 'telemetry', ...frame });
     return messages;
   }
@@ -164,6 +175,40 @@ export class IRacingConnector implements DataSource {
     frame.player.currentSector = num != null && elapsedSec != null ? { num, elapsedSec } : null;
   }
 
+  /**
+   * Wie enrichFuel() oben - Dead-Reckoning braucht Integration ueber
+   * mehrere Ticks, siehe calc/trackPosition.ts. Andere Autos liefern kein
+   * eigenes VelocityX/Y/YawNorth, werden aber trotzdem platziert - per
+   * Interpolation auf der vom Spieler aufgezeichneten Referenz-Polylinie
+   * anhand ihres lapDistPct. Gibt eine `trackmap`-Nachricht zurueck, wenn
+   * die Referenz-Polylinie in diesem Tick gerade erst komplett wurde (eine
+   * Runde ist gefahren) - sonst `null`, damit sie nicht bei jedem Tick neu
+   * verschickt wird.
+   */
+  private enrichTrackPosition(frame: ReturnType<typeof buildTelemetryFrame>): BridgeMessage | null {
+    const me = frame.drivers.find((d) => d.carIdx === frame.player.carIdx);
+    const wasComplete = this.trackTracker.isReferenceComplete;
+    this.trackTracker.update(
+      frame.player.velocityXMs,
+      frame.player.velocityYMs,
+      frame.player.yawNorthRad,
+      me?.lapDistPct ?? 0,
+      frame.sessionTimeSec,
+    );
+
+    frame.player.trackPosition = this.trackTracker.current;
+    for (const driver of frame.drivers) {
+      driver.trackPosition = this.trackTracker.positionForPct(driver.lapDistPct);
+    }
+
+    if (!wasComplete && this.trackTracker.isReferenceComplete) {
+      const message: BridgeMessage = { type: 'trackmap', points: this.trackTracker.referencePolyline };
+      this.trackMapMessage = message;
+      return message;
+    }
+    return null;
+  }
+
   private async tryConnect(): Promise<BridgeMessage[]> {
     const now = Date.now();
     if (now - this.lastConnectAttempt < RECONNECT_DELAY_MS) return [];
@@ -201,11 +246,14 @@ export class IRacingConnector implements DataSource {
     this.playerCarIdx = session.playerCarIdx;
     // Neue Session (anderes Auto, neuer Boxenstopp-Kontext, Neustart,
     // moeglicherweise andere Strecke mit anderen Sektorgrenzen) - alte
-    // Verbrauchs-/Rundenzeiten-/Sektor-Historie ist nicht mehr aussagekraeftig.
+    // Verbrauchs-/Rundenzeiten-/Sektor-/Track-Map-Historie ist nicht mehr
+    // aussagekraeftig (andere Strecke oder andere Start-/Zielposition).
     this.fuelTracker = new FuelTracker();
     this.lapTimeTracker = new LapTimeTracker();
     this.sectorTracker = new MultiCarSectorTracker();
     this.sectorTracker.setBoundaries(session.sectors);
+    this.trackTracker = new TrackPositionTracker();
+    this.trackMapMessage = null;
     const message: BridgeMessage = { type: 'session', ...session };
     this.sessionMessage = message;
     return message;

@@ -37,8 +37,8 @@ Startet Electron im Dev-Modus mit Hot-Reload und verbindet sich mit einer
 laufenden iRacing-Instanz. Zuerst erscheint ein Auswahl-Fenster mit einem
 Layout-**Profil** (Dropdown oben, z.B. "Standard", "Oval", "Formel" - je
 eigene Overlay-Auswahl UND eigene Fensterpositionen) und Checkboxen fuer
-die zwoelf Overlays (Relative, Standings, Fuel, Inputs, Radar, Delta,
-Laptimes, Reifen, Sektoren, Session-Timer, Weather, Flags) - erst ein Klick
+die 13 Overlays (Relative, Standings, Fuel, Inputs, Radar, Delta,
+Laptimes, Reifen, Sektoren, Session-Timer, Weather, Flags, Track Map) - erst ein Klick
 auf "Start" oeffnet die angehakten Fenster: transparent, always-on-top,
 standardmaessig klickdurchlaessig. Ueber "+" laesst sich ein neues Profil
 anlegen (startet mit allen Overlays angehakt), "✎" benennt das aktuelle um,
@@ -48,7 +48,7 @@ frisch - Fenster lassen sich nicht live zwischen Profilen "umhaengen".
 Profile + Auswahl werden gespeichert
 (`%APPDATA%/iracing-overlay/layouts/profiles.json`) und beim naechsten
 Start vorausgewaehlt; beim allerersten Start gibt es ein Profil "Standard"
-mit allen zwoelf Overlays angehakt. Ueber den Tray-Eintrag
+mit allen 13 Overlays angehakt. Ueber den Tray-Eintrag
 "Overlays auswaehlen..." laesst sich das Fenster jederzeit erneut oeffnen,
 um Profil oder Auswahl zu aendern, ohne die App neu zu starten.
 `Strg+Alt+E` schaltet einen Edit-Modus um (gelber Rahmen). Im Edit-Modus
@@ -159,7 +159,7 @@ Zusatzpakete noetig) - dieselben Farben wie die Overlays selbst
 | 3 | Edit-Modus wird nutzbar (Verschieben, Groesse aendern), Layout-Persistenz, Monitor-Auswahl, mehrere benannte Profile | **fertig, verifiziert per Typecheck/Build** - automatisches Umschalten nach Auto/Serie/Session-Typ ist manuell statt automatisch, siehe unten |
 | 4 | Standings + Fuel-Rechner | **fertig, verifiziert per Demo-Modus** - SQLite-Rundenzeiten bewusst zurueckgestellt (kein Verbraucher dafuer), siehe unten |
 | 5 | Input-Telemetrie-Graph + Radar | **fertig, verifiziert per Demo-Modus** - Radar zeigt bewusst keine geschaetzten Seitenpositionen anderer Autos, siehe unten |
-| 6 | Delta-Bar, Session-Timer, Weather, Flags | **fertig, verifiziert per Demo-Modus** - Track Map bewusst zurueckgestellt (SDK-Datengrundlage ungeklaert), siehe unten |
+| 6 | Delta-Bar, Session-Timer, Weather, Flags, Track Map | **fertig, verifiziert per Demo-Modus + Live-Achsen-Verifikation** - siehe "Track Map" unten |
 | 7 | Packaging (`electron-builder`), Tray, Start-/CPU-Budget | **teilweise fertig, verifiziert** - Installer laeuft, CPU-Ziel unter Last von 7.2% auf 2.6% gedrueckt, knapp nicht ganz erreicht, siehe unten |
 
 ## Ordnerstruktur
@@ -281,21 +281,54 @@ gespeichert:
   Abstand waere das nicht derselbe Streckenabschnitt). Gruen = die Zeile war
   dort schneller als ich, Rot = langsamer.
 
-## Track Map: bewusst zurueckgestellt
+## Track Map
 
 Das SDK liefert keine direkten 2D-Weltkoordinaten (kein `PositionX/Y`, kein
-GPS-artiges `Lat`/`Lon`). Eine Streckenkarte liesse sich nur per
-Dead-Reckoning rekonstruieren: `VelocityX`/`VelocityY` ueber die Zeit
-integrieren, dabei mit `YawNorth` in Weltkoordinaten rotieren, und den
-Fehler pro Runde gegen `LapDistPct` = 1.0 korrigieren. Das Problem: die
-generierten Typen dokumentieren nur "X velocity" / "Y velocity" - ob das
-ueberhaupt fahrzeug- oder weltbezogene Achsen sind, ist nicht klar, und das
-laesst sich ohne eine laufende iRacing-Session nicht verifizieren (siehe
-naechster Abschnitt - der Sim-Prozess lief bislang bei keinem
-Arbeitsschritt). Eine Rekonstruktion auf einer geratenen Achskonvention zu
-bauen haette im Demo-Modus problemlos ausgesehen und waere an echten Daten
-vermutlich falsch gewesen - das wollte ich nicht ungeprueft abliefern.
-Kommt, sobald eine echte Session zum Verifizieren verfuegbar ist.
+GPS-artiges `Lat`/`Lon`) - eine Streckenkarte laesst sich nur per
+Dead-Reckoning aus `VelocityX`/`VelocityY` + `YawNorth` rekonstruieren
+(`src/data/calc/trackPosition.ts`). Lange zurueckgestellt, weil die
+generierten Typen nur "X velocity" / "Y velocity" dokumentieren - ob das
+fahrzeug- oder weltbezogene Achsen sind, liess sich ohne laufendes iRacing
+nicht verifizieren, und eine Rekonstruktion auf einer geratenen Achskonvention
+haette im Demo-Modus problemlos ausgesehen und waere an echten Daten
+vermutlich falsch gewesen.
+
+**Live verifiziert:** Waehrend einer echten, aktiv gefahrenen Session
+`VelocityX`/`VelocityY`/`YawNorth` ueber ~70s mitgeschnitten, darunter eine
+~160°-Kursaenderung. Ergebnis: `VelocityX` blieb durchgehend dominant (~17-23
+m/s), `VelocityY` durchgehend klein (< 1 m/s) - bei weltbezogenen Achsen
+haette eine 160°-Drehung beide Komponenten deutlich durcheinanderwuerfeln
+muessen. Also: **`VelocityX`/`VelocityY` sind fahrzeugbezogen** (X=vorwaerts,
+Y=seitlich), nicht weltbezogen - `YawNorth` ist die Rotation, die daraus
+Weltkoordinaten macht. Offen bleibt die absolute Ausrichtung: ohne
+GPS-Referenz laesst sich nicht pruefen, ob "oben" auf der Karte wirklich
+Norden ist oder die Karte spiegelverkehrt ist (Rotationsrichtung von
+`YawNorth` ist eine reine Spiegel-Mehrdeutigkeit ohne Ground-Truth) - die
+*Form* der Strecke und die Position der Autos zueinander stimmen trotzdem.
+
+**Funktionsweise:** `TrackPositionTracker` integriert die Position laufend;
+Fehler ueber eine Runde wuerden sich sonst spuerbar aufsummieren (Rauschen,
+Euler-Integration bei ~60Hz). Deshalb: ab dem ersten beobachteten
+Rundenwechsel (bekannter Punkt: die Start-/Ziellinie) eine Referenz-Polylinie
+aufzeichnen; ab dem zweiten Wechsel ist sie komplett, und jeder weitere
+Rundenwechsel setzt die Integration wieder auf den bekannten Startpunkt
+zurueck statt den Fehler ueber mehrere Runden aufzusummieren. Zweiter Zweck
+der Polylinie: fremde Autos liefern kein eigenes `VelocityX`/`Y`/`YawNorth`
+(nur `CarIdxLapDistPct`), lassen sich aber trotzdem platzieren - jedes Auto
+faehrt dieselbe physische Strecke, Interpolation auf derselben Polylinie
+anhand seines `lapDistPct` reicht. Bis eine Runde komplett aufgezeichnet ist,
+zeigt das Overlay einen Hinweistext statt einer leeren/falschen Karte. Im
+Demo-Modus gibt es keine gefahrene Runde zum Aufzeichnen - dort ein simpler
+Kreis mit Streckenumfang als Kreisumfang, nur fuer die Overlay-Entwicklung.
+
+**Nicht abschliessend live verifiziert:** Der volle Kreislauf (Fenster
+oeffnen, eine ganze Runde fahren, geschlossene Kartenform pruefen) lief nicht
+zu Ende - die Session wechselte waehrend des Tests auf eine andere Strecke.
+Die Achsen-Verifikation selbst (siehe oben) ist es; Datenfluss und
+Rendering sind einzeln gegen den Demo-Modus und gegen eine WebSocket-Sonde
+mit echten Live-Daten geprueft (Referenz-Polylinie + Pro-Auto-Positionen
+kamen korrekt an), nur die visuelle Kontrolle einer tatsaechlich
+geschlossenen Rundenform mit echten Daten steht noch aus.
 
 ## Performance: gemessen, nicht behauptet
 
@@ -396,11 +429,10 @@ Sollte beim naechsten Mal zuerst erneut gegengeprueft werden.
   Screenshots ueber mehrere Sekunden) lief es stabil, nicht reproduzierbar.
   Vermutlich ein einmaliger Timing-Effekt kurz nach App-Start. Falls das
   wieder auftritt, naeher untersuchen.
-- Track Map weiterhin nicht gebaut: `VelocityX`/`VelocityY`/`YawNorth`
-  brauchen zur Verifikation der Achskonvention eine tatsaechlich fahrende
-  Session (siehe "Track Map: bewusst zurueckgestellt" unten) - beim ersten
-  Versuch stand das Auto still (`Speed=0`, beide Velocity-Komponenten 0),
-  keine Bewegungsdaten zum Verifizieren.
+- Track Map gebaut und die Achskonvention live verifiziert (siehe
+  "Track Map" unten) - der volle Kreislauf einer geschlossenen Rundenform
+  mit echten Daten steht aber noch aus, die Session wechselte waehrend des
+  Tests die Strecke, bevor eine Runde komplett aufgezeichnet war.
 
 Geklaert: `irsdk-node`s native Bindings laden ohne Probleme in Electrons
 Node-ABI (getestet via `ELECTRON_RUN_AS_NODE=1`) - das Paket wird explizit

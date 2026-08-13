@@ -7,6 +7,7 @@ function makeSource(messagesPerPoll: BridgeMessage[][]): DataSource {
   let i = 0;
   return {
     lastSessionMessage: null,
+    lastTrackMapMessage: null,
     poll: vi.fn(async () => messagesPerPoll[Math.min(i++, messagesPerPoll.length - 1)] ?? []),
     close: () => {},
   };

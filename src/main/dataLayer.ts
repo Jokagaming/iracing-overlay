@@ -71,8 +71,10 @@ export class DataLayer {
    */
   getWelcomeMessages(): BridgeMessage[] {
     const session = this.source?.lastSessionMessage ?? null;
+    const trackMap = this.source?.lastTrackMapMessage ?? null;
     const messages: BridgeMessage[] = [{ type: 'connection', connected: session != null }];
     if (session) messages.push(session);
+    if (trackMap) messages.push(trackMap);
     return messages;
   }
 

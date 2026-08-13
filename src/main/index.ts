@@ -25,6 +25,7 @@ const OVERLAY_WINDOWS = [
   { id: 'timer', x: 240, y: 530, width: 150, height: 100 },
   { id: 'weather', x: 410, y: 530, width: 190, height: 130 },
   { id: 'flags', x: 620, y: 530, width: 160, height: 60 },
+  { id: 'trackmap', x: 930, y: 440, width: 260, height: 260 },
 ];
 
 // Deutsche Anzeigenamen fuer das Auswahl-Menue (launcherWindow.ts) - hat
@@ -42,6 +43,7 @@ const OVERLAY_LABELS: Record<string, string> = {
   timer: 'Session-Timer',
   weather: 'Wetter',
   flags: 'Flaggen',
+  trackmap: 'Track Map',
 };
 
 const dataLayer = new DataLayer();

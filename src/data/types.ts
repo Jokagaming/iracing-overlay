@@ -79,6 +79,14 @@ export interface Driver {
    * Sektor-Vergleich gegen Vorder-/Hintermann im Relative-Overlay.
    */
   sectorTimes: SectorResult[];
+  /**
+   * Position auf der Track-Map, siehe calc/trackPosition.ts. Fuer fremde
+   * Autos per Interpolation auf der vom Spieler aufgezeichneten
+   * Referenz-Polylinie bestimmt (das SDK liefert VelocityX/Y/YawNorth nur
+   * fuers eigene Auto) - `null`, solange diese Polylinie noch nicht
+   * einmal komplett vorliegt (erste Runde).
+   */
+  trackPosition: TrackPosition | null;
 }
 
 export interface TrackInfo {
@@ -199,6 +207,20 @@ export interface PlayerSectorResult extends SectorResult {
 }
 
 /**
+ * Punkt auf der per Dead-Reckoning rekonstruierten Track-Map, siehe
+ * calc/trackPosition.ts. Beliebige, in sich konsistente Einheit (Meter ab
+ * einem willkuerlichen Ursprung an der Start-/Ziellinie) - keine echten
+ * Weltkoordinaten. Ohne GPS-Referenz vom SDK ist nicht verifizierbar, ob
+ * "oben" auf einer gerenderten Karte Norden oder Sueden entspricht bzw. ob
+ * die Karte spiegelverkehrt ist (siehe README) - die *Form* der Strecke
+ * und die Positionen der Autos zueinander stimmen trotzdem.
+ */
+export interface TrackPosition {
+  x: number;
+  y: number;
+}
+
+/**
  * `CarLeftRight` - direkt vom SDK berechnetes Naehe-Signal, kein
  * per-Auto-Array. Das ist die einzige vom SDK selbst gelieferte
  * Seitenposition-Information; es gibt keine Telemetrie, aus der sich die
@@ -237,6 +259,19 @@ export interface PlayerState {
   sectorTimes: PlayerSectorResult[];
   /** Der gerade laufende Sektor - `null` ohne definierte Sektoren. */
   currentSector: { num: number; elapsedSec: number } | null;
+  /**
+   * `VelocityX`/`VelocityY` - fahrzeugbezogen (X=vorwaerts, Y=seitlich),
+   * nicht weltbezogen. Gegen echte Fahrdaten verifiziert (siehe README):
+   * bei einer ~160°-Kursaenderung blieb X klar dominant und Y klein, was
+   * bei Weltkoordinaten nicht der Fall waere. Einheit m/s. Rohdaten fuer
+   * calc/trackPosition.ts - fuer die meisten Overlays uninteressant.
+   */
+  velocityXMs: number;
+  velocityYMs: number;
+  /** `YawNorth` in rad - Kompass-Kurs, Basis fuer die Weltkoordinaten-Rotation in calc/trackPosition.ts. */
+  yawNorthRad: number;
+  /** Position auf der Track-Map, siehe calc/trackPosition.ts. `null` bevor die erste Runde vollstaendig aufgezeichnet ist. */
+  trackPosition: TrackPosition | null;
 }
 
 // UNSICHER: Enum-Werte nur fuer Rain-faehige Inhalte belastbar, sonst
@@ -285,4 +320,5 @@ export interface TelemetryFrame {
 export type BridgeMessage =
   | { type: 'connection'; connected: boolean }
   | ({ type: 'session' } & SessionState)
-  | ({ type: 'telemetry' } & TelemetryFrame);
+  | ({ type: 'telemetry' } & TelemetryFrame)
+  | { type: 'trackmap'; points: TrackPosition[] };

@@ -15,6 +15,7 @@ const rendererEntries = {
   timer: resolve(__dirname, 'src/renderer/timer/index.html'),
   weather: resolve(__dirname, 'src/renderer/weather/index.html'),
   flags: resolve(__dirname, 'src/renderer/flags/index.html'),
+  trackmap: resolve(__dirname, 'src/renderer/trackmap/index.html'),
   launcher: resolve(__dirname, 'src/renderer/launcher/index.html'),
 };
 

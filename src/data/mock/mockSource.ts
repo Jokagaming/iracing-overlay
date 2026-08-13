@@ -21,6 +21,21 @@ const SECTORS = [
 ];
 
 const TRACK_LENGTH_M = 5793;
+/**
+ * Kein echtes Streckenlayout im Demo-Modus (keine gefahrene Runde, aus der
+ * sich wie live per Dead-Reckoning eine Referenz-Polylinie ergeben koennte,
+ * siehe calc/trackPosition.ts) - ein einfacher Kreis mit Streckenumfang als
+ * Kreisumfang reicht, um die Track-Map-Overlay-Entwicklung ohne laufendes
+ * iRacing zu ermoeglichen.
+ */
+const TRACK_MAP_RADIUS_M = TRACK_LENGTH_M / (2 * Math.PI);
+
+function trackMapPointForPct(pct: number): { x: number; y: number } {
+  const angle = pct * Math.PI * 2;
+  return { x: TRACK_MAP_RADIUS_M * Math.cos(angle), y: TRACK_MAP_RADIUS_M * Math.sin(angle) };
+}
+
+const TRACK_MAP_POLYLINE = Array.from({ length: 200 }, (_, i) => trackMapPointForPct(i / 200));
 const LAP_TIME_BASE = 103.5;
 const PLAYER_IDX = 2;
 const RACE_DURATION_SEC = 3600;
@@ -68,12 +83,14 @@ function makeRng(seed: number): () => number {
 export class MockSource implements DataSource {
   private readonly cars: MockCar[];
   private readonly sessionMessage: BridgeMessage & { type: 'session' };
+  private readonly trackMapMessage: BridgeMessage & { type: 'trackmap' };
   private readonly startedAt = performance.now();
   private readonly fuelTracker = new FuelTracker();
   private readonly lapTimeTracker = new LapTimeTracker();
   private readonly sectorTracker = new MultiCarSectorTracker();
   private seq = 0;
   private sessionSent = false;
+  private trackMapSent = false;
 
   constructor(carCount = 20) {
     const rng = makeRng(1995);
@@ -100,10 +117,17 @@ export class MockSource implements DataSource {
 
     this.sessionMessage = { type: 'session', ...this.buildSessionState() };
     this.sectorTracker.setBoundaries(SECTORS);
+    // Anders als live (siehe connector.ts) steht die Polylinie hier von
+    // Anfang an fest - kein Warten auf eine gefahrene Runde noetig.
+    this.trackMapMessage = { type: 'trackmap', points: TRACK_MAP_POLYLINE };
   }
 
   get lastSessionMessage(): BridgeMessage | null {
     return this.sessionMessage;
+  }
+
+  get lastTrackMapMessage(): BridgeMessage | null {
+    return this.trackMapMessage;
   }
 
   close(): void {
@@ -118,6 +142,10 @@ export class MockSource implements DataSource {
     if (!this.sessionSent) {
       this.sessionSent = true;
       messages.push(this.sessionMessage);
+    }
+    if (!this.trackMapSent) {
+      this.trackMapSent = true;
+      messages.push(this.trackMapMessage);
     }
     messages.push({ type: 'telemetry', ...this.buildTelemetryFrame(elapsedSec) });
     return messages;
@@ -225,6 +253,7 @@ export class MockSource implements DataSource {
         gapToLeaderSec,
         tireCompound: car.tireCompound,
         sectorTimes: [],
+        trackPosition: trackMapPointForPct(lapDistPct),
       };
     });
 
@@ -307,6 +336,13 @@ export class MockSource implements DataSource {
           currentSectorNum != null && currentSectorElapsedSec != null
             ? { num: currentSectorNum, elapsedSec: currentSectorElapsedSec }
             : null,
+        // Nur zur Typ-Vollstaendigkeit - im Demo-Modus wird die Track-Map
+        // direkt geometrisch aus lapDistPct bestimmt (trackMapPointForPct),
+        // nicht per Dead-Reckoning integriert wie live.
+        velocityXMs: speed,
+        velocityYMs: 0,
+        yawNorthRad: lapPct * Math.PI * 2 + Math.PI / 2,
+        trackPosition: trackMapPointForPct(lapPct),
       },
       weather: { airTempC: 24, trackTempC: 34.5, humidityPct: 0.45, trackWetness: 'dry' },
     };

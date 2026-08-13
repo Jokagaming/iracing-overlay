@@ -20,7 +20,7 @@
  *   CLI (`src/data/cli.ts`) bereitgestellte Bridge.
  */
 
-import type { BridgeMessage, SessionState, TelemetryFrame } from '../../data/types.js';
+import type { BridgeMessage, SessionState, TelemetryFrame, TrackPosition } from '../../data/types.js';
 
 // Window.overlayAPI ist zentral in shared/editMode.ts deklariert (jedes
 // Overlay importiert von dort wireEditMode() ohnehin) - hier keine zweite,
@@ -33,6 +33,8 @@ const RETRY_MAX_MS = 5000;
 export class TelemetryClient {
   session: SessionState | null = null;
   telemetry: TelemetryFrame | null = null;
+  /** Referenz-Polylinie der Track-Map, siehe calc/trackPosition.ts. `null`, bevor eine Runde komplett aufgezeichnet ist. */
+  trackMap: TrackPosition[] | null = null;
   /** Ob die Bridge selbst iRacing sieht - nicht, ob der Renderer die Bridge sieht. */
   simConnected = false;
   /** Ob der Renderer mit der Bridge verbunden ist (bei IPC praktisch immer true). */
@@ -110,6 +112,9 @@ export class TelemetryClient {
         break;
       case 'telemetry':
         this.telemetry = message;
+        break;
+      case 'trackmap':
+        this.trackMap = message.points;
         break;
     }
     this.requestRender();

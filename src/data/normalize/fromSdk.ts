@@ -207,6 +207,12 @@ function buildPlayer(t: TelemetryVarList, playerCarIdx: number): PlayerState {
     lastLapTimesSec: [],
     sectorTimes: [],
     currentSector: null,
+    velocityXMs: scalarNum(t.VelocityX),
+    velocityYMs: scalarNum(t.VelocityY),
+    yawNorthRad: scalarNum(t.YawNorth),
+    // Wird vom Connector befuellt - siehe calc/trackPosition.ts, braucht
+    // Zustand (Integration) ueber mehrere Ticks.
+    trackPosition: null,
   };
 }
 
@@ -253,6 +259,8 @@ function buildDrivers(t: TelemetryVarList, roster: DriverRosterEntry[], playerCa
         // Wird vom Connector nach dem Aufruf hier befuellt - siehe
         // calc/sectors.ts, braucht Zustand ueber mehrere Ticks und alle Autos.
         sectorTimes: [],
+        // Wird vom Connector befuellt - siehe calc/trackPosition.ts.
+        trackPosition: null,
       };
     });
 }
