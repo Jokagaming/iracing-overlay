@@ -1,5 +1,6 @@
 import { resolve } from 'node:path';
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
+import preact from '@preact/preset-vite';
 
 // Jedes Overlay bekommt einen eigenen Eintrag hier, sobald es dazukommt.
 const rendererEntries = {
@@ -38,6 +39,10 @@ export default defineConfig({
   },
   renderer: {
     root: resolve(__dirname, 'src/renderer'),
+    // Nur fuer die neuen, komplexeren UI-Teile (Settings-Renderer,
+    // Layout-Editor, Spalten-Drag&Drop) - die bisherigen schlanken
+    // Overlay-Widgets bleiben bewusst Vanilla-DOM (siehe README).
+    plugins: [preact()],
     build: {
       rollupOptions: {
         input: rendererEntries,
