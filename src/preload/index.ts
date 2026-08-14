@@ -31,6 +31,18 @@ contextBridge.exposeInMainWorld('overlayAPI', {
   },
 });
 
+// Nur vom Relative-Overlay genutzt - erster echter Konsument des
+// generischen Settings-Systems (siehe main/relativeSettingsIpc.ts). Noch
+// bewusst overlay-spezifisch statt eines generischen `settingsAPI` fuer
+// alle Overlays - erst wenn ein zweites Overlay ein eigenes Schema bekommt,
+// lohnt sich die Verallgemeinerung.
+contextBridge.exposeInMainWorld('relativeSettingsAPI', {
+  load: (): Promise<Record<string, unknown>> => ipcRenderer.invoke('relative-settings:load'),
+  save: (values: Record<string, unknown>): void => {
+    ipcRenderer.send('relative-settings:save', values);
+  },
+});
+
 export interface LauncherProfile {
   id: string;
   name: string;

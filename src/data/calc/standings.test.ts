@@ -28,6 +28,8 @@ function makeDriver(overrides: Partial<Driver> & { carIdx: number }): Driver {
     tireCompound: null,
     sectorTimes: [],
     trackPosition: null,
+    pitStopCount: 0,
+    stintLaps: 0,
     ...overrides,
   };
 }

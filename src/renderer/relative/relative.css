@@ -1,4 +1,6 @@
 @import "../shared/overlay.css";
+@import "../shared/columns/columns.css";
+@import "../shared/settings/settings-panel.css";
 
 .relative {
   min-width: 380px;
@@ -47,27 +49,12 @@
 }
 
 .relative__settings-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 6px 10px;
-  font-size: 11px;
-  color: var(--text-dim);
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 4px 8px;
   background: rgba(0, 0, 0, 0.25);
   border-bottom: 1px solid var(--border);
   -webkit-app-region: no-drag;
-}
-
-.relative__settings-panel label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-}
-
-.relative__settings-panel input[type='checkbox'] {
-  accent-color: var(--player);
-  cursor: pointer;
 }
 
 .relative__table {
@@ -92,133 +79,21 @@
   background: var(--bg-player);
 }
 
-.relative__row--player .relative__name {
-  color: var(--text-strong);
-  font-weight: 600;
-}
-
 .relative__row--pit {
   opacity: 0.5;
 }
 
-/* Farbbalken der Fahrzeugklasse - im Multiclass die wichtigste Information
-   der Zeile, deshalb ganz links und ohne Text. */
-.relative__class {
-  width: 4px;
-  padding: 0 !important;
-  background: var(--class-color, transparent);
-}
-
-.relative__position {
-  width: 26px;
-  text-align: right;
-  color: var(--text-dim);
-  font-size: 11px;
-}
-
-.relative__number {
-  width: 30px;
-  text-align: right;
-  font-weight: 600;
-  color: var(--text-dim);
-}
-
-.relative__car {
-  max-width: 110px;
+/**
+ * Generische Zelle - Breite/Ausrichtung kommen inline von der jeweiligen
+ * ColumnDefinition (siehe main.ts), hier nur gemeinsame Basis-Optik. Die
+ * fahrzeugspezifischen Spalten (Name, Fahrzeug) duerfen nicht umbrechen.
+ */
+.relative__cell {
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 11px;
   color: var(--text-dim);
 }
 
-.relative__name {
-  max-width: 150px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.relative__irating {
-  width: 34px;
-  text-align: right;
-  font-size: 11px;
-  color: var(--text-dim);
-}
-
-.relative__laps {
-  width: 24px;
-  text-align: right;
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.relative__laps--up {
-  color: var(--good);
-}
-
-.relative__laps--down {
-  color: var(--pit);
-}
-
-.relative__gap {
-  width: 48px;
-  text-align: right;
-  font-weight: 600;
-}
-
-.relative__gap--ahead {
-  color: var(--ahead);
-}
-
-.relative__gap--behind {
-  color: var(--behind);
-}
-
-.relative__gap--player {
-  color: var(--player);
-}
-
-.relative__pit {
-  color: var(--pit);
-  font-size: 10px;
-  font-weight: 700;
-}
-
-/* Extra-Spalten (Reifenmischung, Sektor-Δ) - per Zahnrad im Header
-   ein-/ausblendbar (siehe main.ts), deshalb standardmaessig versteckt
-   statt dauerhaft im Markup zu stehen. */
-.relative__compound,
-.relative__sector-delta {
-  display: none;
-}
-
-.relative__table.show-compound .relative__compound {
-  display: table-cell;
-}
-
-.relative__table.show-sector .relative__sector-delta {
-  display: table-cell;
-}
-
-.relative__compound {
-  width: 20px;
-  text-align: center;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--text-dim);
-}
-
-.relative__sector-delta {
-  width: 40px;
-  text-align: right;
-  font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.relative__sector-delta--ahead {
-  color: var(--good);
-}
-
-.relative__sector-delta--behind {
-  color: var(--pit);
+.relative__row--player .relative__cell {
+  color: var(--text-strong);
 }

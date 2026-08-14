@@ -261,6 +261,9 @@ function buildDrivers(t: TelemetryVarList, roster: DriverRosterEntry[], playerCa
         sectorTimes: [],
         // Wird vom Connector befuellt - siehe calc/trackPosition.ts.
         trackPosition: null,
+        // Wird vom Connector befuellt - siehe calc/pitStops.ts.
+        pitStopCount: 0,
+        stintLaps: 0,
       };
     });
 }

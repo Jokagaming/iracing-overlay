@@ -1,12 +1,34 @@
-import type { CarClass, PlayerState } from '../../data/types.js';
-import { buildRelativeRows, type RelativeRow } from '../../data/calc/relative.js';
+/**
+ * Relative-Overlay - erster echter Konsument der Column-Registry
+ * (shared/columns/registry.ts) und des generischen Settings-Systems
+ * (settings/schema.ts). Die Tabellen-Zeilen bleiben bewusst Vanilla-DOM
+ * (hohe Frequenz, siehe README) - nur das Einstellungs-Panel wird generisch
+ * aus dem Schema gerendert, per Preact (`h()`/`render()` statt JSX - kein
+ * Grund, die ganze Datei auf .tsx umzustellen).
+ */
+
+import { h, render as preactRender } from 'preact';
+import type { CarClass, TelemetryFrame } from '../../data/types.js';
+import { buildRelativeRows, resolveAheadBehind, type RelativeRow } from '../../data/calc/relative.js';
 import { TelemetryClient } from '../shared/client.js';
-import * as format from '../shared/format.js';
 import { wireEditMode } from '../shared/editMode.js';
+import { SettingsPanel } from '../shared/settings/SettingsPanel.js';
+import { columnById, type ColumnContext, type ColumnDefinition } from '../shared/columns/registry.js';
+import { classGroupKey, hashColor } from '../shared/columns/classGrouping.js';
+import { RELATIVE_SETTINGS, RELATIVE_DEFAULT_SETTINGS, type RelativeSettings } from './settings.js';
+
+declare global {
+  interface Window {
+    relativeSettingsAPI: {
+      load: () => Promise<Record<string, unknown>>;
+      save: (values: Record<string, unknown>) => void;
+    };
+  }
+}
 
 const params = new URLSearchParams(location.search);
-const AHEAD = clampCount(params.get('ahead'), 4);
-const BEHIND = clampCount(params.get('behind'), 4);
+const BASE_AHEAD = clampCount(params.get('ahead'), 4);
+const BASE_BEHIND = clampCount(params.get('behind'), 4);
 const WS_URL = params.get('ws') ?? 'ws://127.0.0.1:8778';
 
 const widgetEl = document.getElementById('widget') as HTMLDivElement;
@@ -16,61 +38,7 @@ const bodyEl = document.getElementById('rows') as HTMLTableSectionElement;
 const sessionEl = document.getElementById('session') as HTMLSpanElement;
 const resizeGripEl = document.getElementById('resize-grip') as HTMLDivElement;
 const settingsBtn = document.getElementById('settings-btn') as HTMLButtonElement;
-const settingsPanel = document.getElementById('settings-panel') as HTMLDivElement;
-const colCompoundCheckbox = document.getElementById('col-compound') as HTMLInputElement;
-const colSectorCheckbox = document.getElementById('col-sector') as HTMLInputElement;
-
-/**
- * Zeilen werden wiederverwendet statt bei jedem Frame neu gebaut. Bei 60
- * Bildern pro Sekunde wuerde staendiges Neuerzeugen den Browser unnoetig
- * beschaeftigen und laesst Text kurz flackern.
- */
-interface RowElements {
-  tr: HTMLTableRowElement;
-  classCell: HTMLTableCellElement;
-  position: HTMLTableCellElement;
-  number: HTMLTableCellElement;
-  car: HTMLTableCellElement;
-  name: HTMLTableCellElement;
-  irating: HTMLTableCellElement;
-  laps: HTMLTableCellElement;
-  compound: HTMLTableCellElement;
-  sectorDelta: HTMLTableCellElement;
-  gap: HTMLTableCellElement;
-}
-
-const rowPool: RowElements[] = [];
-
-/** Welche Extra-Spalten der Nutzer eingeschaltet hat - pro Fenster/Browser-Profil gemerkt, ueberlebt einen Neustart. */
-const COLUMNS_STORAGE_KEY = 'iracing-overlay:relative:columns';
-
-interface ColumnSettings {
-  compound: boolean;
-  sectorDelta: boolean;
-}
-
-function loadColumnSettings(): ColumnSettings {
-  try {
-    const raw = localStorage.getItem(COLUMNS_STORAGE_KEY);
-    if (!raw) return { compound: false, sectorDelta: false };
-    const parsed: unknown = JSON.parse(raw);
-    const obj = parsed as Partial<ColumnSettings>;
-    return { compound: Boolean(obj.compound), sectorDelta: Boolean(obj.sectorDelta) };
-  } catch {
-    return { compound: false, sectorDelta: false };
-  }
-}
-
-function saveColumnSettings(settings: ColumnSettings): void {
-  localStorage.setItem(COLUMNS_STORAGE_KEY, JSON.stringify(settings));
-}
-
-const columns = loadColumnSettings();
-
-function applyColumnVisibility(): void {
-  tableEl.classList.toggle('show-compound', columns.compound);
-  tableEl.classList.toggle('show-sector', columns.sectorDelta);
-}
+const settingsPanelEl = document.getElementById('settings-panel') as HTMLDivElement;
 
 function clampCount(raw: string | null, fallback: number): number {
   // Number(null) ist 0, nicht NaN - ohne den expliziten null-Check wuerde
@@ -82,44 +50,50 @@ function clampCount(raw: string | null, fallback: number): number {
   return Math.min(Math.trunc(value), 15);
 }
 
-function createRow(): RowElements {
+/** Zeilen (samt Zellen) werden wiederverwendet statt bei jedem Frame neu gebaut - siehe rebuildRowCells(). */
+interface RowHandle {
+  tr: HTMLTableRowElement;
+  cells: Map<string, HTMLTableCellElement>;
+}
+
+const rowPool: RowHandle[] = [];
+let activeColumns: ColumnDefinition[] = [];
+let settings: RelativeSettings = RELATIVE_DEFAULT_SETTINGS;
+
+/** Baut die Zellen einer (wiederverwendeten) Zeile passend zur aktuellen Spaltenauswahl neu auf. */
+function rebuildRowCells(row: RowHandle): void {
+  row.tr.replaceChildren();
+  row.cells.clear();
+  for (const col of activeColumns) {
+    const td = document.createElement('td');
+    row.cells.set(col.id, td);
+    row.tr.append(td);
+  }
+}
+
+function createRow(): RowHandle {
   const tr = document.createElement('tr');
   tr.className = 'relative__row';
-  tr.innerHTML = `
-    <td class="relative__class"></td>
-    <td class="relative__position"></td>
-    <td class="relative__number"></td>
-    <td class="relative__car"></td>
-    <td class="relative__name"></td>
-    <td class="relative__irating"></td>
-    <td class="relative__laps"></td>
-    <td class="relative__compound"></td>
-    <td class="relative__sector-delta"></td>
-    <td class="relative__gap"></td>
-  `;
-  const [classCell, position, number, car, name, irating, laps, compound, sectorDelta, gap] =
-    tr.children as unknown as HTMLTableCellElement[];
-  const row: RowElements = {
-    tr,
-    classCell: classCell!,
-    position: position!,
-    number: number!,
-    car: car!,
-    name: name!,
-    irating: irating!,
-    laps: laps!,
-    compound: compound!,
-    sectorDelta: sectorDelta!,
-    gap: gap!,
-  };
+  const row: RowHandle = { tr, cells: new Map() };
+  rebuildRowCells(row);
   rowPool.push(row);
   bodyEl.append(tr);
   return row;
 }
 
-/** Setzt Text nur bei echter Aenderung - spart Layout-Arbeit im Browser. */
-function setText(el: HTMLElement, value: string): void {
-  if (el.textContent !== value) el.textContent = value;
+/** Wird bei jeder Aenderung der Spaltenauswahl aufgerufen - alle gepoolten Zeilen muessen ihre Zellenstruktur neu aufbauen. */
+function applyActiveColumns(): void {
+  activeColumns = settings.columns.map((id) => columnById(id)).filter((c): c is ColumnDefinition => c != null);
+  for (const row of rowPool) rebuildRowCells(row);
+}
+
+function resolveClassColor(row: RelativeRow, classes: Map<number, CarClass>): string {
+  const key = classGroupKey(row, settings.classGrouping);
+  if (key == null) return (row.carClassId != null ? classes.get(row.carClassId)?.color : undefined) ?? 'transparent';
+  if (settings.classGrouping === 'bySimClass') {
+    return classes.get(Number(key))?.color ?? hashColor(key);
+  }
+  return hashColor(key);
 }
 
 /**
@@ -129,59 +103,33 @@ function setText(el: HTMLElement, value: string): void {
  * jedem Auto seinen jeweils eigenen letzten Sektor zu nehmen (die waeren
  * bei Autos mit groesserem Abstand nicht mehr derselbe Abschnitt).
  */
-function referenceSectorIndex(player: PlayerState): number | null {
+function referenceSectorIndex(player: TelemetryFrame['player']): number | null {
   if (!player.currentSector || player.sectorTimes.length === 0) return null;
   const idx = player.sectorTimes.findIndex((s) => s.num === player.currentSector!.num);
   if (idx === -1) return null;
   return (idx - 1 + player.sectorTimes.length) % player.sectorTimes.length;
 }
 
-function renderRow(row: RowElements, entry: RelativeRow, classes: Map<number, CarClass>, refSectorIndex: number | null, playerRefSec: number | null): void {
-  const carClass = entry.carClassId != null ? classes.get(entry.carClassId) : undefined;
-
+function renderRow(row: RowHandle, entry: RelativeRow, ctx: ColumnContext): void {
   row.tr.classList.toggle('relative__row--player', entry.isPlayer);
   row.tr.classList.toggle('relative__row--pit', entry.onPitRoad || entry.trackSurface === 'in_pit_stall');
   row.tr.classList.remove('is-hidden');
 
-  row.classCell.style.setProperty('--class-color', carClass?.color ?? 'transparent');
-  setText(row.position, entry.classPosition ? `P${entry.classPosition}` : '');
-  setText(row.number, entry.carNumber ? `#${entry.carNumber}` : '');
-  setText(row.car, entry.carName);
-  setText(row.name, format.driverName(entry.userName));
-  setText(row.irating, format.iRating(entry.iRating));
-
-  setText(row.compound, entry.tireCompound != null ? String(entry.tireCompound) : '');
-
-  if (entry.isPlayer || refSectorIndex == null || playerRefSec == null) {
-    setText(row.sectorDelta, entry.isPlayer ? '—' : '');
-    row.sectorDelta.className = 'relative__sector-delta';
-  } else {
-    const rowSec = entry.sectorTimes[refSectorIndex]?.lastSec ?? null;
-    if (rowSec == null) {
-      setText(row.sectorDelta, '');
-      row.sectorDelta.className = 'relative__sector-delta';
-    } else {
-      const delta = rowSec - playerRefSec;
-      setText(row.sectorDelta, format.delta(delta, 1));
-      row.sectorDelta.className = 'relative__sector-delta ' + (delta < 0 ? 'relative__sector-delta--ahead' : 'relative__sector-delta--behind');
+  for (const col of activeColumns) {
+    const td = row.cells.get(col.id);
+    if (!td) continue;
+    const cell = col.render(entry, ctx);
+    if (td.textContent !== cell.text) td.textContent = cell.text;
+    td.className = cell.className ? `relative__cell ${cell.className}` : 'relative__cell';
+    td.style.cssText = `width:${col.width};text-align:${col.align};`;
+    if (cell.style) {
+      for (const [key, value] of Object.entries(cell.style)) td.style.setProperty(key, value);
     }
   }
+}
 
-  const laps = entry.lapsAhead;
-  setText(row.laps, laps === 0 ? '' : laps > 0 ? `+${laps}` : String(laps));
-  row.laps.classList.toggle('relative__laps--up', laps > 0);
-  row.laps.classList.toggle('relative__laps--down', laps < 0);
-
-  if (entry.onPitRoad || entry.trackSurface === 'in_pit_stall') {
-    setText(row.gap, 'BOX');
-    row.gap.className = 'relative__gap relative__pit';
-  } else if (entry.isPlayer) {
-    setText(row.gap, '—');
-    row.gap.className = 'relative__gap relative__gap--player';
-  } else {
-    setText(row.gap, format.gap(entry.gapSeconds));
-    row.gap.className = 'relative__gap ' + (entry.gapSeconds < 0 ? 'relative__gap--ahead' : 'relative__gap--behind');
-  }
+function setText(el: HTMLElement, value: string): void {
+  if (el.textContent !== value) el.textContent = value;
 }
 
 function showStatus(text: string): void {
@@ -214,7 +162,8 @@ function render(client: TelemetryClient): void {
     return;
   }
 
-  const rows = buildRelativeRows(client.telemetry, client.session.estLapTimeSec, { ahead: AHEAD, behind: BEHIND });
+  const { ahead, behind } = resolveAheadBehind(BASE_AHEAD, BASE_BEHIND, settings.minVisibleDrivers);
+  const rows = buildRelativeRows(client.telemetry, client.session.estLapTimeSec, { ahead, behind });
   if (rows.length === 0) {
     showStatus('Keine Autos auf der Strecke');
     return;
@@ -228,8 +177,18 @@ function render(client: TelemetryClient): void {
   const refSectorIndex = referenceSectorIndex(client.telemetry.player);
   const playerRefSec = refSectorIndex != null ? (client.telemetry.player.sectorTimes[refSectorIndex]?.lastSec ?? null) : null;
 
+  const ctx: ColumnContext = {
+    classes,
+    player: client.telemetry.player,
+    refSectorIndex,
+    playerRefSec,
+    // Noch keine Persistenz/UI zum Setzen eines Tags, siehe shared/columns/registry.ts.
+    driverTags: new Map(),
+    classGroupColor: (row) => resolveClassColor(row as RelativeRow, classes),
+  };
+
   rows.forEach((entry, index) => {
-    renderRow(rowPool[index] ?? createRow(), entry, classes, refSectorIndex, playerRefSec);
+    renderRow(rowPool[index] ?? createRow(), entry, ctx);
   });
   // Uebrige Zeilen aus einem volleren Feld ausblenden statt entfernen -
   // beim naechsten Frame sind sie eventuell wieder gebraucht.
@@ -238,33 +197,53 @@ function render(client: TelemetryClient): void {
   }
 }
 
-settingsBtn.addEventListener('click', () => {
-  settingsPanel.classList.toggle('is-hidden');
-});
+function persistSettings(): void {
+  window.relativeSettingsAPI.save(settings);
+}
 
-colCompoundCheckbox.addEventListener('change', () => {
-  columns.compound = colCompoundCheckbox.checked;
-  applyColumnVisibility();
-  saveColumnSettings(columns);
-});
+function renderSettingsPanel(): void {
+  preactRender(
+    h(SettingsPanel, {
+      fields: RELATIVE_SETTINGS.settingsSchema,
+      // RelativeSettings hat konkrete Feldtypen (string[]/number/enum), die
+      // alle in SettingsPrimitive passen - der generische Renderer kennt
+      // aber nur die breite Record-Form.
+      values: settings as unknown as Record<string, import('../../settings/schema.js').SettingsPrimitive>,
+      onChange: (key, value) => {
+        settings = { ...settings, [key]: value };
+        if (key === 'columns') applyActiveColumns();
+        persistSettings();
+        renderSettingsPanel();
+      },
+    }),
+    settingsPanelEl,
+  );
+}
 
-colSectorCheckbox.addEventListener('change', () => {
-  columns.sectorDelta = colSectorCheckbox.checked;
-  applyColumnVisibility();
-  saveColumnSettings(columns);
-});
+async function init(): Promise<void> {
+  try {
+    const loaded = await window.relativeSettingsAPI.load();
+    settings = { ...RELATIVE_DEFAULT_SETTINGS, ...loaded } as RelativeSettings;
+  } catch (err) {
+    console.error('[relative] Settings konnten nicht geladen werden, nutze Defaults:', err);
+  }
+  applyActiveColumns();
+  renderSettingsPanel();
 
-colCompoundCheckbox.checked = columns.compound;
-colSectorCheckbox.checked = columns.sectorDelta;
-applyColumnVisibility();
+  settingsBtn.addEventListener('click', () => {
+    settingsPanelEl.classList.toggle('is-hidden');
+  });
 
-wireEditMode(widgetEl, resizeGripEl);
-// Verlaesst der Nutzer den Edit-Modus, ist der Zahnrad-Knopf ohnehin nicht
-// mehr klickbar (siehe relative.css) - das Panel soll dann nicht unsichtbar
-// "offen" haengen bleiben, sonst wirkt ein spaeterer Wiedereinstieg in den
-// Edit-Modus so, als waere gar nichts passiert.
-window.overlayAPI.onEditModeChange((editMode) => {
-  if (!editMode) settingsPanel.classList.add('is-hidden');
-});
+  wireEditMode(widgetEl, resizeGripEl);
+  // Verlaesst der Nutzer den Edit-Modus, ist der Zahnrad-Knopf ohnehin nicht
+  // mehr klickbar (siehe relative.css) - das Panel soll dann nicht unsichtbar
+  // "offen" haengen bleiben, sonst wirkt ein spaeterer Wiedereinstieg in den
+  // Edit-Modus so, als waere gar nichts passiert.
+  window.overlayAPI.onEditModeChange((editMode) => {
+    if (!editMode) settingsPanelEl.classList.add('is-hidden');
+  });
 
-new TelemetryClient(WS_URL).onRender(render).start();
+  new TelemetryClient(WS_URL).onRender(render).start();
+}
+
+void init();

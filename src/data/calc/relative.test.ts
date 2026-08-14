@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Driver, TelemetryFrame } from '../types.js';
-import { buildRelativeRows } from './relative.js';
+import { buildRelativeRows, resolveAheadBehind } from './relative.js';
 
 const LAP_TIME = 100;
 
@@ -30,6 +30,8 @@ function makeDriver(overrides: Partial<Driver> & { carIdx: number }): Driver {
     tireCompound: null,
     sectorTimes: [],
     trackPosition: null,
+    pitStopCount: 0,
+    stintLaps: 0,
     ...overrides,
   };
 }
@@ -192,5 +194,22 @@ describe('buildRelativeRows', () => {
     const rows = buildRelativeRows(frame, LAP_TIME, { ahead: 3, behind: 3 });
     const other = rows.find((r) => r.carIdx === 1)!;
     expect(other.gapSeconds).toBe(-10);
+  });
+});
+
+describe('resolveAheadBehind', () => {
+  it('laesst ahead/behind unveraendert, wenn schon genug Zeilen entstehen', () => {
+    expect(resolveAheadBehind(4, 4, 0)).toEqual({ ahead: 4, behind: 4 });
+    expect(resolveAheadBehind(4, 4, 9)).toEqual({ ahead: 4, behind: 4 });
+  });
+
+  it('verteilt fehlende Zeilen etwa gleichmaessig auf beide Seiten', () => {
+    // 2+2+1=5 Zeilen, 9 gefordert -> 4 fehlen, 2 nach vorn, 2 nach hinten.
+    expect(resolveAheadBehind(2, 2, 9)).toEqual({ ahead: 4, behind: 4 });
+  });
+
+  it('rundet eine ungerade fehlende Anzahl nach vorn auf', () => {
+    // 2+2+1=5 Zeilen, 8 gefordert -> 3 fehlen, 2 nach vorn, 1 nach hinten.
+    expect(resolveAheadBehind(2, 2, 8)).toEqual({ ahead: 4, behind: 3 });
   });
 });

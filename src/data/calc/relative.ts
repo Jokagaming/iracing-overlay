@@ -24,6 +24,23 @@ export interface RelativeOptions {
 }
 
 /**
+ * Erweitert `ahead`/`behind` bei Bedarf, damit insgesamt mindestens
+ * `minVisibleDrivers` Zeilen angezeigt werden (siehe Relative-Settings,
+ * `minVisibleDrivers`) - `windowAroundPlayer()` erzwingt zwar bereits
+ * "genau `ahead+behind+1` Zeilen wo moeglich, auch am Feldanfang/-ende",
+ * aber nicht ein Minimum UEBER die konfigurierten ahead/behind-Werte
+ * hinaus. Verteilt die zusaetzlich noetigen Zeilen etwa gleichmaessig auf
+ * beide Seiten.
+ */
+export function resolveAheadBehind(ahead: number, behind: number, minVisibleDrivers: number): { ahead: number; behind: number } {
+  const extra = minVisibleDrivers - (ahead + behind + 1);
+  if (extra <= 0) return { ahead, behind };
+  const addAhead = Math.ceil(extra / 2);
+  const addBehind = extra - addAhead;
+  return { ahead: ahead + addAhead, behind: behind + addBehind };
+}
+
+/**
  * Schneidet das Fenster um den Spieler heraus.
  *
  * Sind nach vorn oder hinten weniger Autos da als gewuenscht, wird auf der

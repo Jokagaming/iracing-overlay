@@ -17,6 +17,7 @@ import { FuelTracker } from './calc/fuel.js';
 import { LapTimeTracker } from './calc/laptimes.js';
 import { MultiCarSectorTracker } from './calc/sectors.js';
 import { TrackPositionTracker } from './calc/trackPosition.js';
+import { MultiCarPitTracker } from './calc/pitStops.js';
 
 const POLL_TIMEOUT_MS = Math.floor((1 / 60) * 1000); // ~16ms, siehe irsdk-node README
 const RECONNECT_DELAY_MS = 1000;
@@ -63,6 +64,7 @@ export class IRacingConnector implements DataSource {
   private sectorTracker = new MultiCarSectorTracker();
   private trackTracker = new TrackPositionTracker();
   private trackMapMessage: BridgeMessage | null = null;
+  private pitTracker = new MultiCarPitTracker();
 
   get lastSessionMessage(): BridgeMessage | null {
     return this.sessionMessage;
@@ -122,6 +124,7 @@ export class IRacingConnector implements DataSource {
     this.enrichFuel(frame);
     this.enrichLapTimes(frame);
     this.enrichSectors(frame);
+    this.enrichPitStops(frame);
     const trackMapMessage = this.enrichTrackPosition(frame);
     if (trackMapMessage) messages.push(trackMapMessage);
     messages.push({ type: 'telemetry', ...frame });
@@ -173,6 +176,16 @@ export class IRacingConnector implements DataSource {
     const num = this.sectorTracker.currentSectorNumFor(frame.player.carIdx);
     const elapsedSec = this.sectorTracker.currentElapsedSecFor(frame.player.carIdx, frame.sessionTimeSec);
     frame.player.currentSector = num != null && elapsedSec != null ? { num, elapsedSec } : null;
+  }
+
+  /** Wie enrichSectors() oben - Boxenstopps/Stint-Laenge brauchen Zustand ueber mehrere Ticks und alle Autos, siehe calc/pitStops.ts. */
+  private enrichPitStops(frame: ReturnType<typeof buildTelemetryFrame>): void {
+    for (const driver of frame.drivers) {
+      this.pitTracker.update(driver.carIdx, driver.lap, driver.onPitRoad);
+      const info = this.pitTracker.infoFor(driver.carIdx);
+      driver.pitStopCount = info.pitStopCount;
+      driver.stintLaps = info.stintLaps;
+    }
   }
 
   /**
@@ -254,6 +267,7 @@ export class IRacingConnector implements DataSource {
     this.sectorTracker.setBoundaries(session.sectors);
     this.trackTracker = new TrackPositionTracker();
     this.trackMapMessage = null;
+    this.pitTracker = new MultiCarPitTracker();
     const message: BridgeMessage = { type: 'session', ...session };
     this.sessionMessage = message;
     return message;

@@ -7,6 +7,7 @@ import { createLauncherWindow, showLauncherWindow } from './launcherWindow.js';
 import { loadProfiles, saveProfiles, uniqueProfileId, type Profile, type ProfilesFile } from './profileStore.js';
 import { deleteLayoutFile } from './layoutStore.js';
 import { checkForUpdates, setupAutoUpdate } from './autoUpdate.js';
+import { registerRelativeSettingsIpc } from './relativeSettingsIpc.js';
 
 const EDIT_MODE_HOTKEY = 'Control+Alt+E';
 const DATA_HOST = '127.0.0.1';
@@ -193,6 +194,7 @@ app.whenReady().then(async () => {
   });
 
   setupAutoUpdate();
+  registerRelativeSettingsIpc();
 
   // --demo laesst die App ohne laufendes iRacing testen, z.B. via
   // `npm run dev -- --demo` im electron-vite-Entwicklungsmodus.

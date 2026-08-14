@@ -1,0 +1,32 @@
+/**
+ * Generische Zell-Zustandsklassen fuer die Column-Registry
+ * (shared/columns/registry.ts) - overlay-uebergreifend nutzbar, damit ein
+ * kuenftiges Standings/Leaderboard/Overtake-Alert-Overlay dieselbe Faerbung
+ * bekommt, ohne sie neu zu definieren.
+ */
+
+.is-gap--ahead {
+  color: var(--ahead);
+}
+
+.is-gap--behind {
+  color: var(--behind);
+}
+
+.is-player {
+  color: var(--player);
+}
+
+.is-pit {
+  color: var(--pit);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.is-lap-up {
+  color: var(--good);
+}
+
+.is-lap-down {
+  color: var(--pit);
+}

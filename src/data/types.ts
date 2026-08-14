@@ -87,6 +87,13 @@ export interface Driver {
    * einmal komplett vorliegt (erste Runde).
    */
   trackPosition: TrackPosition | null;
+  /**
+   * Boxenstopps und Stint-Laenge dieses Autos in dieser Session - das SDK
+   * liefert keinen fertigen Zaehler, nur den aktuellen `onPitRoad`-Status
+   * je Tick, siehe calc/pitStops.ts.
+   */
+  pitStopCount: number;
+  stintLaps: number;
 }
 
 export interface TrackInfo {

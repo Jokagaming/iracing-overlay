@@ -254,6 +254,11 @@ export class MockSource implements DataSource {
         tireCompound: car.tireCompound,
         sectorTimes: [],
         trackPosition: trackMapPointForPct(lapDistPct),
+        // Deterministisches Fake-Muster (alle 12 Runden ein Boxenstopp) -
+        // wie die uebrigen Demo-Werte hier keine echte Simulation, nur
+        // plausibel genug fuer Overlay-Entwicklung/-Styling.
+        pitStopCount: Math.floor(lap / 12),
+        stintLaps: lap % 12,
       };
     });
 
