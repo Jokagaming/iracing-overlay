@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveDisplay, toOverlayPosition, toPixelBounds, type DisplayInfo } from './position.js';
+import { resolveDisplay, toOverlayPosition, toPixelBounds, unionBounds, type DisplayInfo } from './position.js';
 
 const PRIMARY: DisplayInfo = { key: 'primary#1920x1080', bounds: { x: 0, y: 0, width: 1920, height: 1080 }, scaleFactor: 1 };
 const SECONDARY: DisplayInfo = {
@@ -47,5 +47,20 @@ describe('resolveDisplay', () => {
     const result = resolveDisplay(position, [PRIMARY], PRIMARY);
     expect(result.display).toBe(PRIMARY);
     expect(result.fellBackToPrimary).toBe(true);
+  });
+});
+
+describe('unionBounds', () => {
+  it('liefert ein leeres Rechteck ohne Displays', () => {
+    expect(unionBounds([])).toEqual({ x: 0, y: 0, width: 0, height: 0 });
+  });
+
+  it('liefert die Bounds unveraendert bei nur einem Display', () => {
+    expect(unionBounds([PRIMARY])).toEqual(PRIMARY.bounds);
+  });
+
+  it('umschliesst mehrere Displays inkl. negativer Koordinaten (Monitor links/oben vom Hauptmonitor)', () => {
+    // PRIMARY: 0,0 - 1920,1080. SECONDARY: 1920,-200 - 4480,1240.
+    expect(unionBounds([PRIMARY, SECONDARY])).toEqual({ x: 0, y: -200, width: 4480, height: 1440 });
   });
 });

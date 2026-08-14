@@ -85,3 +85,21 @@ export function resolveDisplay(position: OverlayPosition, displays: DisplayInfo[
   const match = displays.find((d) => d.key === position.displayKey);
   return match ? { display: match, fellBackToPrimary: false } : { display: primary, fellBackToPrimary: true };
 }
+
+/**
+ * Umhuellende Rechteck-Flaeche ueber alle Displays - der "virtuelle
+ * Desktop", auf dem das Layout-Modus-Fenster liegt (siehe
+ * main/layoutWindowTarget.ts). Kann Monitore mit negativen Koordinaten
+ * (links/oben vom Hauptmonitor) und Luecken zwischen ungleich grossen
+ * Monitoren enthalten - das Fenster deckt dann auch die Luecken ab, das
+ * ist unproblematisch (leere Bereiche bleiben einfach ungenutzt/
+ * klickdurchlaessig).
+ */
+export function unionBounds(displays: DisplayInfo[]): Rect {
+  if (displays.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
+  const minX = Math.min(...displays.map((d) => d.bounds.x));
+  const minY = Math.min(...displays.map((d) => d.bounds.y));
+  const maxX = Math.max(...displays.map((d) => d.bounds.x + d.bounds.width));
+  const maxY = Math.max(...displays.map((d) => d.bounds.y + d.bounds.height));
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}

@@ -239,9 +239,13 @@ async function init(): Promise<void> {
   // mehr klickbar (siehe relative.css) - das Panel soll dann nicht unsichtbar
   // "offen" haengen bleiben, sonst wirkt ein spaeterer Wiedereinstieg in den
   // Edit-Modus so, als waere gar nichts passiert.
-  window.overlayAPI.onEditModeChange((editMode) => {
-    if (!editMode) settingsPanelEl.classList.add('is-hidden');
-  });
+  // Im Layout-Modus (iframe) existiert window.overlayAPI nicht - siehe
+  // wireEditMode() in shared/editMode.ts fuer denselben Fall.
+  if (window.overlayAPI) {
+    window.overlayAPI.onEditModeChange((editMode) => {
+      if (!editMode) settingsPanelEl.classList.add('is-hidden');
+    });
+  }
 
   new TelemetryClient(WS_URL).onRender(render).start();
 }

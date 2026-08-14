@@ -18,6 +18,7 @@ const rendererEntries = {
   flags: resolve(__dirname, 'src/renderer/flags/index.html'),
   trackmap: resolve(__dirname, 'src/renderer/trackmap/index.html'),
   launcher: resolve(__dirname, 'src/renderer/launcher/index.html'),
+  'layout-window': resolve(__dirname, 'src/renderer/layout-window/index.html'),
 };
 
 export default defineConfig({

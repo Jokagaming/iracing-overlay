@@ -28,6 +28,16 @@ declare global {
 }
 
 export function wireEditMode(widgetEl: HTMLElement, resizeGripEl: HTMLElement): void {
+  // Im Layout-Modus laeuft dieses Overlay als <iframe> in layout-window
+  // (siehe main/layoutWindowTarget.ts) - Electron fuehrt Preload-Skripte
+  // dort nicht aus, `window.overlayAPI` existiert also nicht. Eigene
+  // Edit-Anzeige/Resize-Griff sind dort ohnehin ueberfluessig (der
+  // Layout-Editor zeichnet seinen eigenen Rahmen/Griff um das iframe herum,
+  // siehe renderer/layout-window/main.tsx) - also einfach nichts verdrahten
+  // statt mit einer TypeError abzustuerzen (das wuerde auch den danach
+  // folgenden TelemetryClient.start()-Aufruf verhindern).
+  if (!window.overlayAPI) return;
+
   window.overlayAPI.onEditModeChange((editMode) => {
     widgetEl.dataset.edit = String(editMode);
   });
