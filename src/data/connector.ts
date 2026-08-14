@@ -55,6 +55,8 @@ export class IRacingConnector implements DataSource {
   private roster: DriverRosterEntry[] = [];
   private playerCarIdx = -1;
   private lastSessionVersion = -1;
+  /** Track-ID + beobachtetes Auto der letzten Session, mit der die Tracker zurueckgesetzt wurden - siehe maybeSession(). */
+  private lastResetKey: string | null = null;
   private sessionMessage: BridgeMessage | null = null;
   private connected = false;
   private lastConnectAttempt = 0;
@@ -257,17 +259,30 @@ export class IRacingConnector implements DataSource {
     const session = buildSessionState(this.sdk, version);
     this.roster = session.drivers;
     this.playerCarIdx = session.playerCarIdx;
-    // Neue Session (anderes Auto, neuer Boxenstopp-Kontext, Neustart,
-    // moeglicherweise andere Strecke mit anderen Sektorgrenzen) - alte
-    // Verbrauchs-/Rundenzeiten-/Sektor-/Track-Map-Historie ist nicht mehr
-    // aussagekraeftig (andere Strecke oder andere Start-/Zielposition).
-    this.fuelTracker = new FuelTracker();
-    this.lapTimeTracker = new LapTimeTracker();
-    this.sectorTracker = new MultiCarSectorTracker();
-    this.sectorTracker.setBoundaries(session.sectors);
-    this.trackTracker = new TrackPositionTracker();
-    this.trackMapMessage = null;
-    this.pitTracker = new MultiCarPitTracker();
+
+    // SessionVersionNum steigt bei praktisch jeder Aenderung der
+    // Session-YAML (Positionswechsel, Boxenstopps, Incidents anderer
+    // Fahrer, ...), nicht nur bei einem echten Strecken- oder Autowechsel -
+    // in einem groesseren Feld also alle paar Sekunden. Ein Reset bei jedem
+    // Versionssprung hat live beobachtet gerade aufgezeichnete
+    // Rundenzeiten-/Verbrauchshistorie Sekunden spaeter wieder verworfen,
+    // obwohl Strecke und beobachtetes Auto unveraendert waren. Nur
+    // zuruecksetzen, wenn sich Strecke oder Auto tatsaechlich geaendert
+    // haben (anderes Auto, neuer Boxenstopp-Kontext, Neustart, moeglicherweise
+    // andere Strecke mit anderen Sektorgrenzen) - alte Verbrauchs-/
+    // Rundenzeiten-/Sektor-/Track-Map-Historie ist dann nicht mehr
+    // aussagekraeftig.
+    const resetKey = `${session.track.id}:${session.playerCarIdx}`;
+    if (resetKey !== this.lastResetKey) {
+      this.lastResetKey = resetKey;
+      this.fuelTracker = new FuelTracker();
+      this.lapTimeTracker = new LapTimeTracker();
+      this.sectorTracker = new MultiCarSectorTracker();
+      this.sectorTracker.setBoundaries(session.sectors);
+      this.trackTracker = new TrackPositionTracker();
+      this.trackMapMessage = null;
+      this.pitTracker = new MultiCarPitTracker();
+    }
     const message: BridgeMessage = { type: 'session', ...session };
     this.sessionMessage = message;
     return message;
